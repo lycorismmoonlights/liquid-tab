@@ -49,6 +49,7 @@ const cropperBackdrop = document.getElementById("cropper-backdrop");
 const cropper = document.getElementById("cropper");
 const cropperFrame = document.getElementById("cropper-frame");
 const cropperSurface = document.getElementById("cropper-surface");
+const cropperImage = document.getElementById("cropper-image");
 const cropperZoom = document.getElementById("cropper-zoom");
 const cropperCancel = document.getElementById("cropper-cancel");
 const cropperApply = document.getElementById("cropper-apply");
@@ -434,9 +435,10 @@ function closeCropper() {
   cropState = null;
   cropper.hidden = true;
   cropperBackdrop.hidden = true;
-  cropperSurface.style.backgroundImage = "none";
-  cropperSurface.style.backgroundSize = "";
-  cropperSurface.style.backgroundPosition = "";
+  cropperImage.removeAttribute("src");
+  cropperImage.style.width = "";
+  cropperImage.style.height = "";
+  cropperImage.style.transform = "";
   cropperSurface.classList.remove("is-dragging");
   cropperZoom.value = "1";
   cropperApply.disabled = false;
@@ -468,8 +470,9 @@ function renderCropPreview() {
   }
 
   const scale = getCropScale();
-  cropperSurface.style.backgroundSize = `${cropState.image.naturalWidth * scale}px ${cropState.image.naturalHeight * scale}px`;
-  cropperSurface.style.backgroundPosition = `calc(50% + ${cropState.offsetX}px) calc(50% + ${cropState.offsetY}px)`;
+  cropperImage.style.width = `${cropState.image.naturalWidth * scale}px`;
+  cropperImage.style.height = `${cropState.image.naturalHeight * scale}px`;
+  cropperImage.style.transform = `translate3d(${cropState.offsetX}px, ${cropState.offsetY}px, 0) translate(-50%, -50%)`;
 }
 
 function syncCropLayout(preserveOffset = false) {
@@ -538,7 +541,7 @@ async function openCropper(file) {
     };
 
     cropperZoom.value = "1";
-    cropperSurface.style.backgroundImage = `url("${objectUrl}")`;
+    cropperImage.src = objectUrl;
     cropper.hidden = false;
     cropperBackdrop.hidden = false;
 
@@ -781,45 +784,104 @@ cropperZoom.addEventListener("input", () => {
   renderCropPreview();
 });
 
-cropperSurface.addEventListener("pointerdown", (event) => {
+function startCropDrag(clientX, clientY, pointerId = null) {
   if (!cropState) {
     return;
   }
 
-  cropState.pointerId = event.pointerId;
-  cropState.startX = event.clientX;
-  cropState.startY = event.clientY;
+  cropState.pointerId = pointerId;
+  cropState.startX = clientX;
+  cropState.startY = clientY;
   cropState.startOffsetX = cropState.offsetX;
   cropState.startOffsetY = cropState.offsetY;
   cropperSurface.classList.add("is-dragging");
-  cropperSurface.setPointerCapture(event.pointerId);
-});
+}
 
-cropperSurface.addEventListener("pointermove", (event) => {
-  if (!cropState || cropState.pointerId !== event.pointerId) {
+function moveCropDrag(clientX, clientY, pointerId = null) {
+  if (!cropState) {
     return;
   }
 
-  cropState.offsetX = cropState.startOffsetX + (event.clientX - cropState.startX);
-  cropState.offsetY = cropState.startOffsetY + (event.clientY - cropState.startY);
+  if (cropState.pointerId !== null && pointerId !== null && cropState.pointerId !== pointerId) {
+    return;
+  }
+
+  cropState.offsetX = cropState.startOffsetX + (clientX - cropState.startX);
+  cropState.offsetY = cropState.startOffsetY + (clientY - cropState.startY);
   clampCropOffsets();
   renderCropPreview();
-});
+}
 
-function releaseCropPointer(event) {
-  if (!cropState || cropState.pointerId !== event.pointerId) {
+function endCropDrag(pointerId = null) {
+  if (!cropState) {
+    return;
+  }
+
+  if (cropState.pointerId !== null && pointerId !== null && cropState.pointerId !== pointerId) {
     return;
   }
 
   cropState.pointerId = null;
   cropperSurface.classList.remove("is-dragging");
-  if (cropperSurface.hasPointerCapture(event.pointerId)) {
-    cropperSurface.releasePointerCapture(event.pointerId);
-  }
 }
 
-cropperSurface.addEventListener("pointerup", releaseCropPointer);
-cropperSurface.addEventListener("pointercancel", releaseCropPointer);
+cropperSurface.addEventListener("pointerdown", (event) => {
+  startCropDrag(event.clientX, event.clientY, event.pointerId);
+  if (typeof cropperSurface.setPointerCapture === "function") {
+    cropperSurface.setPointerCapture(event.pointerId);
+  }
+});
+
+cropperSurface.addEventListener("pointermove", (event) => {
+  moveCropDrag(event.clientX, event.clientY, event.pointerId);
+});
+
+cropperSurface.addEventListener("pointerup", (event) => {
+  endCropDrag(event.pointerId);
+  if (typeof cropperSurface.hasPointerCapture === "function" && cropperSurface.hasPointerCapture(event.pointerId)) {
+    cropperSurface.releasePointerCapture(event.pointerId);
+  }
+});
+
+cropperSurface.addEventListener("pointercancel", (event) => {
+  endCropDrag(event.pointerId);
+});
+
+cropperSurface.addEventListener("touchstart", (event) => {
+  if (cropState && cropState.pointerId !== null) {
+    return;
+  }
+
+  const touch = event.touches[0];
+  if (!touch) {
+    return;
+  }
+
+  event.preventDefault();
+  startCropDrag(touch.clientX, touch.clientY);
+}, { passive: false });
+
+cropperSurface.addEventListener("touchmove", (event) => {
+  if (cropState && cropState.pointerId !== null) {
+    return;
+  }
+
+  const touch = event.touches[0];
+  if (!touch) {
+    return;
+  }
+
+  event.preventDefault();
+  moveCropDrag(touch.clientX, touch.clientY);
+}, { passive: false });
+
+cropperSurface.addEventListener("touchend", () => {
+  endCropDrag();
+}, { passive: false });
+
+cropperSurface.addEventListener("touchcancel", () => {
+  endCropDrag();
+}, { passive: false });
 
 cropperApply.addEventListener("click", async () => {
   if (!cropState) {
