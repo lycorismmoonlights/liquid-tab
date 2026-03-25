@@ -17,6 +17,7 @@ const SEARCH_ENGINES = {
 };
 
 const LIQUID_SNAPSHOT_TARGET = ".scene__capture";
+const LIQUID_TARGET_SELECTOR = ".liquid-lens--search, .liquid-lens--dock";
 const CROP_PRESETS = {
   default: {
     width: 1179,
@@ -358,24 +359,24 @@ function applyState() {
 function getLiquidPreset() {
   if (state.style === "transparent") {
     return {
-      refraction: 0,
-      bevelDepth: 0.016,
-      bevelWidth: 0.06,
-      frost: 0.04,
+      refraction: 0.002,
+      bevelDepth: 0.012,
+      bevelWidth: 0.05,
+      frost: 0.02,
       shadow: false,
       specular: false,
-      magnify: 1
+      magnify: 1.0008
     };
   }
 
   return {
-    refraction: 0,
-    bevelDepth: 0.028,
-    bevelWidth: 0.11,
-    frost: 0.24,
+    refraction: 0.006,
+    bevelDepth: 0.018,
+    bevelWidth: 0.075,
+    frost: 0.08,
     shadow: false,
     specular: !state.reduceMotion,
-    magnify: 1.001
+    magnify: 1.0016
   };
 }
 
@@ -437,7 +438,7 @@ function initLiquidGlass() {
   try {
     const effect = window.liquidGL({
       snapshot: LIQUID_SNAPSHOT_TARGET,
-      target: ".liquid-lens",
+      target: LIQUID_TARGET_SELECTOR,
       resolution: 2,
       tilt: false,
       reveal: state.reduceMotion ? "none" : "fade",
