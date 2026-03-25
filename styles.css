@@ -109,6 +109,10 @@ body[data-theme="day"][data-style="transparent"] {
   box-sizing: border-box;
 }
 
+[hidden] {
+  display: none !important;
+}
+
 html,
 body {
   min-height: 100%;
