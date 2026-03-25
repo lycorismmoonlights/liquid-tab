@@ -20,7 +20,6 @@ const body = document.body;
 const searchForm = document.getElementById("search-form");
 const searchInput = document.getElementById("search-input");
 const pasteButton = document.getElementById("paste-button");
-const timeNode = document.getElementById("status-time");
 const tabsSheet = document.getElementById("tabs-sheet");
 const settingsSheet = document.getElementById("settings-sheet");
 const sheetBackdrop = document.getElementById("sheet-backdrop");
@@ -43,15 +42,6 @@ function applyState() {
   localStorage.setItem(STORAGE_KEYS.style, state.style);
   localStorage.setItem(STORAGE_KEYS.engine, state.engine);
   localStorage.setItem(STORAGE_KEYS.reduceMotion, String(state.reduceMotion));
-}
-
-function updateTime() {
-  const now = new Date();
-  timeNode.textContent = now.toLocaleTimeString("zh-CN", {
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: false
-  });
 }
 
 function looksLikeUrl(value) {
@@ -127,7 +117,6 @@ document.getElementById("nav-forward").addEventListener("click", () => window.hi
 document.getElementById("nav-search").addEventListener("click", () => searchInput.focus());
 document.getElementById("nav-tabs").addEventListener("click", () => openSheet(tabsSheet));
 document.getElementById("nav-menu").addEventListener("click", () => openSheet(settingsSheet));
-document.getElementById("profile-toggle").addEventListener("click", () => openSheet(settingsSheet));
 sheetBackdrop.addEventListener("click", closeSheets);
 
 motionToggle.addEventListener("change", () => {
@@ -143,6 +132,4 @@ document.addEventListener("keydown", (event) => {
 
 tabBadge.textContent = String(document.querySelectorAll(".quick-card").length).padStart(2, "0");
 
-updateTime();
-setInterval(updateTime, 30000);
 applyState();
