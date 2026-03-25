@@ -1,7 +1,8 @@
 const STORAGE_KEYS = {
   style: "liquid-tab-style",
   engine: "liquid-tab-engine",
-  reduceMotion: "liquid-tab-reduce-motion"
+  reduceMotion: "liquid-tab-reduce-motion",
+  wallpaper: "liquid-tab-wallpaper"
 };
 
 const SEARCH_ENGINES = {
@@ -10,10 +11,14 @@ const SEARCH_ENGINES = {
   bing: "https://www.bing.com/search?q="
 };
 
+const MAX_WALLPAPER_DIMENSION = 1600;
+const MAX_WALLPAPER_LENGTH = 1800000;
+
 const state = {
   style: localStorage.getItem(STORAGE_KEYS.style) || "liquid",
   engine: localStorage.getItem(STORAGE_KEYS.engine) || "google",
-  reduceMotion: localStorage.getItem(STORAGE_KEYS.reduceMotion) === "true"
+  reduceMotion: localStorage.getItem(STORAGE_KEYS.reduceMotion) === "true",
+  wallpaper: localStorage.getItem(STORAGE_KEYS.wallpaper) || ""
 };
 
 const body = document.body;
@@ -25,8 +30,41 @@ const settingsSheet = document.getElementById("settings-sheet");
 const sheetBackdrop = document.getElementById("sheet-backdrop");
 const motionToggle = document.getElementById("motion-toggle");
 const tabBadge = document.getElementById("tab-badge");
+const wallpaperLayer = document.getElementById("wallpaper-layer");
+const wallpaperInput = document.getElementById("wallpaper-input");
+const wallpaperUpload = document.getElementById("wallpaper-upload");
+const wallpaperReset = document.getElementById("wallpaper-reset");
+const wallpaperMeta = document.getElementById("wallpaper-meta");
+
 let liquidLenses = [];
 let liquidGlassReady = false;
+let liquidSnapshotFrame = 0;
+let wallpaperBusy = false;
+let wallpaperMessage = "";
+
+function syncWallpaperControls() {
+  wallpaperUpload.disabled = wallpaperBusy;
+  wallpaperReset.disabled = wallpaperBusy || !state.wallpaper;
+
+  if (wallpaperMessage) {
+    wallpaperMeta.textContent = wallpaperMessage;
+    return;
+  }
+
+  wallpaperMeta.textContent = state.wallpaper
+    ? "已使用自定义壁纸，只保存在当前浏览器。"
+    : "当前使用默认壁纸。上传的图片只保存在这台设备的浏览器里。";
+}
+
+function setWallpaperBusy(isBusy) {
+  wallpaperBusy = isBusy;
+  syncWallpaperControls();
+}
+
+function setWallpaperMessage(message = "") {
+  wallpaperMessage = message;
+  syncWallpaperControls();
+}
 
 function applyState() {
   body.dataset.style = state.style;
@@ -44,6 +82,7 @@ function applyState() {
   localStorage.setItem(STORAGE_KEYS.style, state.style);
   localStorage.setItem(STORAGE_KEYS.engine, state.engine);
   localStorage.setItem(STORAGE_KEYS.reduceMotion, String(state.reduceMotion));
+  syncWallpaperControls();
   syncLiquidGlass();
 }
 
@@ -71,6 +110,35 @@ function getLiquidPreset() {
   };
 }
 
+function refreshLiquidGlassSnapshot() {
+  if (!liquidLenses.length) {
+    return;
+  }
+
+  const firstLens = liquidLenses[0];
+  const renderer = firstLens && firstLens.renderer;
+  if (!renderer || typeof renderer.captureSnapshot !== "function") {
+    return;
+  }
+
+  if (liquidSnapshotFrame) {
+    cancelAnimationFrame(liquidSnapshotFrame);
+  }
+
+  liquidSnapshotFrame = requestAnimationFrame(() => {
+    liquidSnapshotFrame = requestAnimationFrame(async () => {
+      try {
+        await renderer.captureSnapshot();
+        if (typeof renderer.render === "function") {
+          renderer.render();
+        }
+      } catch (error) {
+        console.warn("liquidGL snapshot refresh failed.", error);
+      }
+    });
+  });
+}
+
 function syncLiquidGlass() {
   if (!liquidLenses.length) {
     return;
@@ -88,6 +156,8 @@ function syncLiquidGlass() {
       lens.setShadow(preset.shadow);
     }
   });
+
+  refreshLiquidGlassSnapshot();
 }
 
 function initLiquidGlass() {
@@ -112,9 +182,11 @@ function initLiquidGlass() {
 
     liquidLenses = Array.isArray(effect) ? effect.filter(Boolean) : [effect].filter(Boolean);
     liquidGlassReady = liquidLenses.length > 0;
+
     if (typeof window.liquidGL.syncWith === "function") {
       window.liquidGL.syncWith();
     }
+
     syncLiquidGlass();
   } catch (error) {
     console.warn("liquidGL init failed, falling back to CSS glass.", error);
@@ -158,6 +230,123 @@ function openSheet(sheet) {
   sheetBackdrop.hidden = false;
 }
 
+function readFileAsDataUrl(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result || ""));
+    reader.onerror = () => reject(new Error("图片读取失败，请换一张试试。"));
+    reader.readAsDataURL(file);
+  });
+}
+
+function loadImage(source) {
+  return new Promise((resolve, reject) => {
+    const image = new Image();
+    image.onload = () => resolve(image);
+    image.onerror = () => reject(new Error("图片加载失败，请换一张试试。"));
+    image.src = source;
+  });
+}
+
+function renderImageToCanvas(canvas, image, width, height) {
+  canvas.width = width;
+  canvas.height = height;
+
+  const context = canvas.getContext("2d", { alpha: false });
+  context.imageSmoothingEnabled = true;
+  context.imageSmoothingQuality = "high";
+  context.clearRect(0, 0, width, height);
+  context.drawImage(image, 0, 0, width, height);
+}
+
+async function compressWallpaper(file) {
+  const sourceDataUrl = await readFileAsDataUrl(file);
+  const image = await loadImage(sourceDataUrl);
+  const canvas = document.createElement("canvas");
+
+  let width = image.naturalWidth || image.width;
+  let height = image.naturalHeight || image.height;
+  const scale = Math.min(1, MAX_WALLPAPER_DIMENSION / Math.max(width, height));
+
+  width = Math.max(1, Math.round(width * scale));
+  height = Math.max(1, Math.round(height * scale));
+
+  let quality = 0.86;
+  let dataUrl = "";
+  let attempts = 0;
+
+  while (attempts < 8) {
+    renderImageToCanvas(canvas, image, width, height);
+    dataUrl = canvas.toDataURL("image/jpeg", quality);
+
+    if (dataUrl.length <= MAX_WALLPAPER_LENGTH) {
+      return dataUrl;
+    }
+
+    if (quality > 0.62) {
+      quality = Math.max(0.62, quality - 0.08);
+    } else {
+      width = Math.max(480, Math.round(width * 0.88));
+      height = Math.max(480, Math.round(height * 0.88));
+    }
+
+    attempts += 1;
+  }
+
+  throw new Error("这张图有点大，先裁一下或者换一张更小的。");
+}
+
+async function renderWallpaper(dataUrl) {
+  if (!dataUrl) {
+    wallpaperLayer.style.backgroundImage = "none";
+    body.classList.remove("has-custom-wallpaper");
+    refreshLiquidGlassSnapshot();
+    return;
+  }
+
+  await loadImage(dataUrl);
+  wallpaperLayer.style.backgroundImage = `url("${dataUrl}")`;
+  body.classList.add("has-custom-wallpaper");
+  refreshLiquidGlassSnapshot();
+}
+
+function persistWallpaper(dataUrl) {
+  if (!dataUrl) {
+    localStorage.removeItem(STORAGE_KEYS.wallpaper);
+    return;
+  }
+
+  try {
+    localStorage.setItem(STORAGE_KEYS.wallpaper, dataUrl);
+  } catch (error) {
+    throw new Error("这张壁纸存不下，换一张更小的试试。");
+  }
+}
+
+async function setWallpaper(dataUrl) {
+  persistWallpaper(dataUrl);
+  state.wallpaper = dataUrl;
+  await renderWallpaper(dataUrl);
+  syncWallpaperControls();
+}
+
+async function restoreWallpaper() {
+  syncWallpaperControls();
+
+  if (!state.wallpaper) {
+    return;
+  }
+
+  try {
+    await renderWallpaper(state.wallpaper);
+  } catch (error) {
+    console.warn("Saved wallpaper could not be restored.", error);
+    state.wallpaper = "";
+    localStorage.removeItem(STORAGE_KEYS.wallpaper);
+    setWallpaperMessage("上次保存的壁纸失效了，已经恢复默认。");
+  }
+}
+
 searchForm.addEventListener("submit", (event) => {
   event.preventDefault();
   submitSearch(searchInput.value);
@@ -189,6 +378,49 @@ document.querySelectorAll("[data-engine-choice]").forEach((button) => {
   });
 });
 
+wallpaperUpload.addEventListener("click", () => {
+  wallpaperInput.click();
+});
+
+wallpaperReset.addEventListener("click", async () => {
+  setWallpaperBusy(true);
+  setWallpaperMessage("已恢复默认壁纸。");
+
+  try {
+    await setWallpaper("");
+  } finally {
+    setWallpaperBusy(false);
+  }
+});
+
+wallpaperInput.addEventListener("change", async (event) => {
+  const file = event.target.files && event.target.files[0];
+  wallpaperInput.value = "";
+
+  if (!file) {
+    return;
+  }
+
+  if (!file.type.startsWith("image/")) {
+    setWallpaperMessage("这不是图片文件，换一张照片试试。");
+    return;
+  }
+
+  setWallpaperBusy(true);
+  setWallpaperMessage("正在处理壁纸...");
+
+  try {
+    const compressedWallpaper = await compressWallpaper(file);
+    await setWallpaper(compressedWallpaper);
+    setWallpaperMessage("自定义壁纸已更新，只保存在当前浏览器。");
+  } catch (error) {
+    console.warn("Wallpaper upload failed.", error);
+    setWallpaperMessage(error.message || "壁纸上传失败，请换一张试试。");
+  } finally {
+    setWallpaperBusy(false);
+  }
+});
+
 document.getElementById("nav-back").addEventListener("click", () => window.history.back());
 document.getElementById("nav-forward").addEventListener("click", () => window.history.forward());
 document.getElementById("nav-search").addEventListener("click", () => searchInput.focus());
@@ -211,8 +443,12 @@ tabBadge.textContent = String(document.querySelectorAll(".quick-card").length).p
 
 applyState();
 
+const wallpaperReady = restoreWallpaper();
+
 if (document.readyState === "complete") {
-  initLiquidGlass();
+  wallpaperReady.finally(initLiquidGlass);
 } else {
-  window.addEventListener("load", initLiquidGlass, { once: true });
+  window.addEventListener("load", () => {
+    wallpaperReady.finally(initLiquidGlass);
+  }, { once: true });
 }

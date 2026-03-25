@@ -15,6 +15,7 @@
 </head>
 <body data-style="liquid">
   <div class="scene" aria-hidden="true">
+    <div class="scene__wallpaper" id="wallpaper-layer"></div>
     <div class="scene__glow scene__glow--top"></div>
     <div class="scene__glow scene__glow--mid"></div>
     <div class="scene__glow scene__glow--bottom"></div>
@@ -164,6 +165,16 @@
     </div>
 
     <div class="setting-group">
+      <p class="setting-label">自定义壁纸</p>
+      <div class="segmented">
+        <button class="segment" id="wallpaper-upload" type="button">上传壁纸</button>
+        <button class="segment" id="wallpaper-reset" type="button">恢复默认</button>
+      </div>
+      <p class="setting-hint" id="wallpaper-meta">当前使用默认壁纸。上传的图片只保存在这台设备的浏览器里。</p>
+      <input class="sr-only" id="wallpaper-input" type="file" accept="image/*">
+    </div>
+
+    <div class="setting-group">
       <p class="setting-label">搜索引擎</p>
       <div class="segmented segmented--three">
         <button class="segment is-active" data-engine-choice="google" type="button">Google</button>
@@ -182,7 +193,7 @@
       </label>
     </div>
 
-    <p class="sheet-note">iPhone 上想更像独立标签页：Safari 打开后点“分享”，再选“添加到主屏幕”。</p>
+    <p class="sheet-note">iPhone 上想更像独立标签页：Safari 打开后点“分享”，再选“添加到主屏幕”。自定义壁纸只保存在当前浏览器，不会同步到别的设备。</p>
   </section>
 
   <script src="vendor/html2canvas.min.js"></script>

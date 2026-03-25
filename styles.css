@@ -98,10 +98,50 @@ input {
   pointer-events: none;
 }
 
+.scene__wallpaper {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  opacity: 0;
+  transform: scale(1.02);
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: cover;
+  transition: opacity 220ms ease, transform 320ms ease;
+}
+
+.scene__wallpaper::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  background:
+    linear-gradient(180deg, rgba(17, 24, 35, 0.28), rgba(17, 21, 31, 0.14) 36%, rgba(9, 12, 18, 0.3) 100%),
+    radial-gradient(circle at 50% 20%, rgba(255, 222, 171, 0.16), transparent 28%);
+  transition: opacity 220ms ease;
+}
+
 .scene__glow,
 .scene__cloud,
 .scene__cityline {
   position: absolute;
+  z-index: 1;
+  transition: opacity 220ms ease;
+}
+
+body.has-custom-wallpaper .scene__wallpaper {
+  opacity: 1;
+  transform: scale(1);
+}
+
+body.has-custom-wallpaper .scene__wallpaper::after {
+  opacity: 1;
+}
+
+body.has-custom-wallpaper .scene__glow,
+body.has-custom-wallpaper .scene__cloud,
+body.has-custom-wallpaper .scene__cityline {
+  opacity: 0;
 }
 
 .scene__glow {
@@ -606,6 +646,13 @@ body.liquid-gl-enabled .dock-shell::after {
   font-size: 0.96rem;
 }
 
+.setting-hint {
+  margin: 10px 0 0;
+  color: var(--text-muted);
+  font-size: 0.9rem;
+  line-height: 1.55;
+}
+
 .segmented {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -622,6 +669,11 @@ body.liquid-gl-enabled .dock-shell::after {
   border: 1px solid rgba(255, 255, 255, 0.12);
   background: rgba(255, 255, 255, 0.06);
   color: var(--text-primary);
+}
+
+.segment:disabled {
+  opacity: 0.5;
+  cursor: default;
 }
 
 .toggle-row {
