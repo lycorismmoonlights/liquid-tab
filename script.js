@@ -1,4 +1,5 @@
 const STORAGE_KEYS = {
+  browserMode: "liquid-tab-browser-mode",
   style: "liquid-tab-style",
   engine: "liquid-tab-engine",
   reduceMotion: "liquid-tab-reduce-motion",
@@ -20,7 +21,13 @@ const IPHONE_15_PRO_WALLPAPER = {
 const MAX_WALLPAPER_LENGTH = 1800000;
 const MAX_RECENT_ITEMS = 4;
 
+function detectBrowserMode() {
+  const ua = navigator.userAgent || "";
+  return /CriOS/i.test(ua) ? "chrome" : "default";
+}
+
 const state = {
+  browserMode: localStorage.getItem(STORAGE_KEYS.browserMode) || detectBrowserMode(),
   style: localStorage.getItem(STORAGE_KEYS.style) || "liquid",
   engine: localStorage.getItem(STORAGE_KEYS.engine) || "google",
   reduceMotion: localStorage.getItem(STORAGE_KEYS.reduceMotion) === "true",
@@ -225,9 +232,14 @@ function clamp(value, min, max) {
 }
 
 function applyState() {
+  body.dataset.browserMode = state.browserMode;
   body.dataset.style = state.style;
   body.classList.toggle("is-reduced-motion", state.reduceMotion);
   motionToggle.checked = state.reduceMotion;
+
+  document.querySelectorAll("[data-browser-mode-choice]").forEach((button) => {
+    button.classList.toggle("is-active", button.dataset.browserModeChoice === state.browserMode);
+  });
 
   document.querySelectorAll("[data-style-choice]").forEach((button) => {
     button.classList.toggle("is-active", button.dataset.styleChoice === state.style);
@@ -237,6 +249,7 @@ function applyState() {
     button.classList.toggle("is-active", button.dataset.engineChoice === state.engine);
   });
 
+  localStorage.setItem(STORAGE_KEYS.browserMode, state.browserMode);
   localStorage.setItem(STORAGE_KEYS.style, state.style);
   localStorage.setItem(STORAGE_KEYS.engine, state.engine);
   localStorage.setItem(STORAGE_KEYS.reduceMotion, String(state.reduceMotion));
@@ -715,6 +728,13 @@ document.querySelectorAll("[data-style-choice]").forEach((button) => {
   });
 });
 
+document.querySelectorAll("[data-browser-mode-choice]").forEach((button) => {
+  button.addEventListener("click", () => {
+    state.browserMode = button.dataset.browserModeChoice;
+    applyState();
+  });
+});
+
 document.querySelectorAll("[data-engine-choice]").forEach((button) => {
   button.addEventListener("click", () => {
     state.engine = button.dataset.engineChoice;
@@ -916,6 +936,8 @@ document.getElementById("nav-forward").addEventListener("click", () => window.hi
 document.getElementById("nav-search").addEventListener("click", () => searchInput.focus());
 document.getElementById("nav-tabs").addEventListener("click", () => openSheet(tabsSheet));
 document.getElementById("nav-menu").addEventListener("click", () => openSheet(settingsSheet));
+document.getElementById("chrome-tabs").addEventListener("click", () => openSheet(tabsSheet));
+document.getElementById("chrome-settings").addEventListener("click", () => openSheet(settingsSheet));
 sheetBackdrop.addEventListener("click", closeSheets);
 
 motionToggle.addEventListener("change", () => {

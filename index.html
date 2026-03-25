@@ -35,6 +35,17 @@
         <p class="subtitle">只要不失去你的崇高，世界将为你展开</p>
       </div>
 
+      <div class="hero-tools reveal delay-1" aria-label="Chrome 浏览器工具">
+        <button class="hero-tool glass-shell" id="chrome-tabs" type="button">
+          <div class="liquid-lens liquid-lens--tool" aria-hidden="true"></div>
+          <span class="hero-tool__content glass-content" data-liquid-ignore>快捷</span>
+        </button>
+        <button class="hero-tool glass-shell" id="chrome-settings" type="button">
+          <div class="liquid-lens liquid-lens--tool" aria-hidden="true"></div>
+          <span class="hero-tool__content glass-content" data-liquid-ignore>设置</span>
+        </button>
+      </div>
+
       <form class="search-shell glass-shell reveal delay-1" id="search-form">
         <div class="liquid-lens liquid-lens--search" aria-hidden="true"></div>
         <div class="search-panel glass-content" data-liquid-ignore>
@@ -166,6 +177,14 @@
     <div class="sheet__header">
       <p class="sheet__eyebrow">Preferences</p>
       <h2 class="sheet__title" id="settings-title">页面设置</h2>
+    </div>
+
+    <div class="setting-group">
+      <p class="setting-label">浏览器模式</p>
+      <div class="segmented">
+        <button class="segment is-active" data-browser-mode-choice="default" type="button">默认</button>
+        <button class="segment" data-browser-mode-choice="chrome" type="button">Chrome</button>
+      </div>
     </div>
 
     <div class="setting-group">

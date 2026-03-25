@@ -257,6 +257,18 @@ body.has-custom-wallpaper .scene__cityline {
   padding-top: clamp(14px, 3vh, 30px);
 }
 
+body[data-browser-mode="chrome"] .page-shell {
+  padding:
+    calc(var(--top-safe) + 8px)
+    var(--page-padding-right)
+    calc(var(--bottom-safe) + 28px)
+    var(--page-padding);
+}
+
+body[data-browser-mode="chrome"] .hero {
+  padding-top: 4px;
+}
+
 .hero-copy {
   text-align: center;
 }
@@ -284,6 +296,16 @@ body.has-custom-wallpaper .scene__cityline {
   font-size: 1rem;
   line-height: 1.55;
   color: var(--text-secondary);
+}
+
+body[data-browser-mode="chrome"] .wordmark {
+  font-size: clamp(3.6rem, 14vw, 5rem);
+}
+
+body[data-browser-mode="chrome"] .subtitle {
+  width: min(82vw, 400px);
+  margin-top: 10px;
+  font-size: 0.96rem;
 }
 
 .surface {
@@ -367,6 +389,10 @@ body[data-style="transparent"].liquid-gl-enabled .glass-shell::before {
   box-shadow: var(--surface-shadow);
   backdrop-filter: blur(28px) saturate(1.35);
   -webkit-backdrop-filter: blur(28px) saturate(1.35);
+}
+
+body[data-browser-mode="chrome"] .search-shell {
+  margin-top: 18px;
 }
 
 .search-panel {
@@ -460,6 +486,35 @@ body.liquid-gl-enabled .tab-badge {
   fill: none;
 }
 
+.hero-tools {
+  display: none;
+  gap: 10px;
+  justify-content: center;
+  margin-top: 14px;
+}
+
+body[data-browser-mode="chrome"] .hero-tools {
+  display: flex;
+}
+
+.hero-tool {
+  min-width: 88px;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text-primary);
+}
+
+.hero-tool__content {
+  display: grid;
+  place-items: center;
+  min-height: 38px;
+  padding: 0 16px;
+  font-size: 0.92rem;
+  font-weight: 600;
+}
+
 .mode-pills {
   display: flex;
   gap: 12px;
@@ -490,6 +545,10 @@ body.liquid-gl-enabled .tab-badge {
   gap: 12px;
   width: min(100%, 640px);
   margin: 18px auto 0;
+}
+
+body[data-browser-mode="chrome"] .quick-grid {
+  margin-top: 14px;
 }
 
 .quick-card {
@@ -535,6 +594,10 @@ body.liquid-gl-enabled .tab-badge {
   box-shadow: var(--surface-shadow);
   backdrop-filter: blur(28px) saturate(1.35);
   -webkit-backdrop-filter: blur(28px) saturate(1.35);
+}
+
+body[data-browser-mode="chrome"] .recent-shell {
+  margin-top: 14px;
 }
 
 .recent-panel {
@@ -647,6 +710,10 @@ body.liquid-gl-enabled .tab-badge {
   border: 1px solid var(--surface-border);
   backdrop-filter: blur(28px) saturate(1.35);
   -webkit-backdrop-filter: blur(28px) saturate(1.35);
+}
+
+body[data-browser-mode="chrome"] .dock-shell {
+  display: none;
 }
 
 .dock {
@@ -832,6 +899,10 @@ body.liquid-gl-enabled .dock-shell::after {
   max-height: calc(var(--viewport-height) - 140px);
   overflow-y: auto;
   overscroll-behavior: contain;
+}
+
+body[data-browser-mode="chrome"] .sheet {
+  bottom: calc(var(--bottom-safe) + 24px);
 }
 
 .sheet__header {
