@@ -1,5 +1,6 @@
 const STORAGE_KEYS = {
   browserMode: "liquid-tab-browser-mode",
+  themeMode: "liquid-tab-theme-mode",
   style: "liquid-tab-style",
   engine: "liquid-tab-engine",
   reduceMotion: "liquid-tab-reduce-motion",
@@ -26,8 +27,11 @@ function detectBrowserMode() {
   return /CriOS/i.test(ua) ? "chrome" : "default";
 }
 
+const systemThemeQuery = window.matchMedia ? window.matchMedia("(prefers-color-scheme: dark)") : null;
+
 const state = {
   browserMode: localStorage.getItem(STORAGE_KEYS.browserMode) || detectBrowserMode(),
+  themeMode: localStorage.getItem(STORAGE_KEYS.themeMode) || "system",
   style: localStorage.getItem(STORAGE_KEYS.style) || "liquid",
   engine: localStorage.getItem(STORAGE_KEYS.engine) || "google",
   reduceMotion: localStorage.getItem(STORAGE_KEYS.reduceMotion) === "true",
@@ -59,6 +63,7 @@ const cropperImage = document.getElementById("cropper-image");
 const cropperZoom = document.getElementById("cropper-zoom");
 const cropperCancel = document.getElementById("cropper-cancel");
 const cropperApply = document.getElementById("cropper-apply");
+const themeColorMeta = document.querySelector('meta[name="theme-color"]');
 
 let liquidLenses = [];
 let liquidGlassReady = false;
@@ -231,11 +236,33 @@ function clamp(value, min, max) {
   return Math.min(max, Math.max(min, value));
 }
 
+function resolveTheme() {
+  if (state.themeMode === "system") {
+    return systemThemeQuery && systemThemeQuery.matches ? "night" : "day";
+  }
+
+  return state.themeMode;
+}
+
+function syncThemeColor() {
+  if (!themeColorMeta) {
+    return;
+  }
+
+  themeColorMeta.setAttribute("content", body.dataset.theme === "day" ? "#eef3fb" : "#24344c");
+}
+
 function applyState() {
+  body.dataset.themeMode = state.themeMode;
+  body.dataset.theme = resolveTheme();
   body.dataset.browserMode = state.browserMode;
   body.dataset.style = state.style;
   body.classList.toggle("is-reduced-motion", state.reduceMotion);
   motionToggle.checked = state.reduceMotion;
+
+  document.querySelectorAll("[data-theme-mode-choice]").forEach((button) => {
+    button.classList.toggle("is-active", button.dataset.themeModeChoice === state.themeMode);
+  });
 
   document.querySelectorAll("[data-browser-mode-choice]").forEach((button) => {
     button.classList.toggle("is-active", button.dataset.browserModeChoice === state.browserMode);
@@ -249,10 +276,12 @@ function applyState() {
     button.classList.toggle("is-active", button.dataset.engineChoice === state.engine);
   });
 
+  localStorage.setItem(STORAGE_KEYS.themeMode, state.themeMode);
   localStorage.setItem(STORAGE_KEYS.browserMode, state.browserMode);
   localStorage.setItem(STORAGE_KEYS.style, state.style);
   localStorage.setItem(STORAGE_KEYS.engine, state.engine);
   localStorage.setItem(STORAGE_KEYS.reduceMotion, String(state.reduceMotion));
+  syncThemeColor();
   syncWallpaperControls();
   syncLiquidGlass();
 }
@@ -735,6 +764,13 @@ document.querySelectorAll("[data-browser-mode-choice]").forEach((button) => {
   });
 });
 
+document.querySelectorAll("[data-theme-mode-choice]").forEach((button) => {
+  button.addEventListener("click", () => {
+    state.themeMode = button.dataset.themeModeChoice;
+    applyState();
+  });
+});
+
 document.querySelectorAll("[data-engine-choice]").forEach((button) => {
   button.addEventListener("click", () => {
     state.engine = button.dataset.engineChoice;
@@ -973,6 +1009,20 @@ window.addEventListener("resize", handleViewportResize);
 if (window.visualViewport) {
   window.visualViewport.addEventListener("resize", handleViewportResize);
   window.visualViewport.addEventListener("scroll", handleViewportResize);
+}
+
+if (systemThemeQuery) {
+  const handleSystemThemeChange = () => {
+    if (state.themeMode === "system") {
+      applyState();
+    }
+  };
+
+  if (typeof systemThemeQuery.addEventListener === "function") {
+    systemThemeQuery.addEventListener("change", handleSystemThemeChange);
+  } else if (typeof systemThemeQuery.addListener === "function") {
+    systemThemeQuery.addListener(handleSystemThemeChange);
+  }
 }
 
 tabBadge.textContent = String(document.querySelectorAll(".quick-card").length).padStart(2, "0");

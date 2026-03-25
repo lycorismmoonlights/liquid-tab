@@ -22,6 +22,9 @@
   --chip-active-bg: rgba(255, 255, 255, 0.18);
   --chip-active-border: rgba(255, 255, 255, 0.34);
   --sheet-bg: linear-gradient(180deg, rgba(29, 39, 57, 0.82), rgba(17, 24, 38, 0.9));
+  --eyebrow-color: rgba(252, 230, 199, 0.74);
+  --recent-eyebrow-color: rgba(252, 230, 199, 0.72);
+  --search-placeholder: rgba(247, 247, 251, 0.78);
 }
 
 body[data-style="transparent"] {
@@ -32,6 +35,40 @@ body[data-style="transparent"] {
   --dock-shadow: 0 16px 34px rgba(11, 16, 28, 0.22);
   --chip-active-bg: rgba(255, 255, 255, 0.12);
   --chip-active-border: rgba(255, 255, 255, 0.24);
+}
+
+body[data-theme="night"] {
+  color-scheme: dark;
+}
+
+body[data-theme="day"] {
+  color-scheme: light;
+  --text-primary: rgba(35, 46, 63, 0.96);
+  --text-secondary: rgba(58, 71, 92, 0.76);
+  --text-muted: rgba(87, 101, 124, 0.58);
+  --surface-border: rgba(255, 255, 255, 0.52);
+  --surface-shadow: 0 22px 52px rgba(103, 126, 154, 0.18);
+  --surface-bg: linear-gradient(180deg, rgba(255, 255, 255, 0.74), rgba(237, 244, 252, 0.5));
+  --surface-highlight: linear-gradient(180deg, rgba(255, 255, 255, 0.7), rgba(255, 255, 255, 0.08));
+  --surface-stroke: rgba(255, 255, 255, 0.58);
+  --dock-bg: linear-gradient(180deg, rgba(255, 255, 255, 0.84), rgba(232, 239, 248, 0.58));
+  --dock-shadow: 0 16px 34px rgba(112, 136, 164, 0.18);
+  --chip-active-bg: rgba(255, 255, 255, 0.62);
+  --chip-active-border: rgba(255, 255, 255, 0.8);
+  --sheet-bg: linear-gradient(180deg, rgba(243, 247, 253, 0.92), rgba(226, 235, 247, 0.95));
+  --eyebrow-color: rgba(156, 122, 78, 0.78);
+  --recent-eyebrow-color: rgba(166, 128, 80, 0.74);
+  --search-placeholder: rgba(83, 96, 118, 0.72);
+}
+
+body[data-theme="day"][data-style="transparent"] {
+  --surface-bg: linear-gradient(180deg, rgba(255, 255, 255, 0.48), rgba(255, 255, 255, 0.24));
+  --surface-highlight: linear-gradient(180deg, rgba(255, 255, 255, 0.52), rgba(255, 255, 255, 0.06));
+  --surface-stroke: rgba(255, 255, 255, 0.34);
+  --dock-bg: linear-gradient(180deg, rgba(255, 255, 255, 0.42), rgba(255, 255, 255, 0.18));
+  --dock-shadow: 0 16px 30px rgba(112, 136, 164, 0.14);
+  --chip-active-bg: rgba(255, 255, 255, 0.44);
+  --chip-active-border: rgba(255, 255, 255, 0.56);
 }
 
 * {
@@ -56,6 +93,13 @@ body {
   font-family: var(--font-body);
 }
 
+body[data-theme="day"] {
+  background:
+    radial-gradient(circle at 50% 16%, rgba(255, 214, 161, 0.34), transparent 23%),
+    radial-gradient(circle at 46% 34%, rgba(255, 169, 132, 0.16), transparent 20%),
+    linear-gradient(180deg, #eef3fb 0%, #dbe6f3 24%, #d3d8e8 54%, #d7d0dc 76%, #d9d6e3 100%);
+}
+
 body::before,
 body::after {
   content: "";
@@ -71,6 +115,12 @@ body::before {
   mix-blend-mode: screen;
 }
 
+body[data-theme="day"]::before {
+  background:
+    radial-gradient(circle at 18% 84%, rgba(255, 189, 117, 0.16), transparent 20%),
+    radial-gradient(circle at 76% 72%, rgba(255, 171, 128, 0.08), transparent 18%);
+}
+
 body::after {
   opacity: 0.1;
   background-image:
@@ -78,6 +128,10 @@ body::after {
     linear-gradient(90deg, rgba(255, 255, 255, 0.3) 1px, transparent 1px);
   background-size: 130px 130px;
   mask-image: linear-gradient(180deg, transparent 0%, rgba(0, 0, 0, 0.28) 36%, rgba(0, 0, 0, 0.85) 100%);
+}
+
+body[data-theme="day"]::after {
+  opacity: 0.05;
 }
 
 a,
@@ -127,6 +181,12 @@ input {
     linear-gradient(180deg, rgba(17, 24, 35, 0.28), rgba(17, 21, 31, 0.14) 36%, rgba(9, 12, 18, 0.3) 100%),
     radial-gradient(circle at 50% 20%, rgba(255, 222, 171, 0.16), transparent 28%);
   transition: opacity 220ms ease;
+}
+
+body[data-theme="day"] .scene__wallpaper::after {
+  background:
+    linear-gradient(180deg, rgba(248, 250, 255, 0.34), rgba(248, 250, 255, 0.1) 36%, rgba(228, 237, 248, 0.18) 100%),
+    radial-gradient(circle at 50% 20%, rgba(255, 233, 190, 0.18), transparent 28%);
 }
 
 .scene__glow,
@@ -278,7 +338,7 @@ body[data-browser-mode="chrome"] .hero {
   font-size: 0.82rem;
   letter-spacing: 0.22em;
   text-transform: uppercase;
-  color: rgba(252, 230, 199, 0.74);
+  color: var(--eyebrow-color);
 }
 
 .wordmark {
@@ -431,7 +491,7 @@ body[data-browser-mode="chrome"] .search-shell {
 }
 
 .search-input::placeholder {
-  color: rgba(247, 247, 251, 0.78);
+  color: var(--search-placeholder);
 }
 
 .search-actions {
@@ -616,7 +676,7 @@ body[data-browser-mode="chrome"] .recent-shell {
   font-size: 0.72rem;
   letter-spacing: 0.18em;
   text-transform: uppercase;
-  color: rgba(252, 230, 199, 0.72);
+  color: var(--recent-eyebrow-color);
 }
 
 .recent-title {
