@@ -640,7 +640,7 @@ body.liquid-gl-enabled .tab-badge {
   position: fixed;
   left: max(14px, env(safe-area-inset-left));
   right: max(14px, env(safe-area-inset-right));
-  bottom: calc(var(--bottom-safe) + 8px);
+  bottom: max(8px, env(safe-area-inset-bottom));
   border-radius: 30px;
   background: var(--dock-bg);
   box-shadow: var(--dock-shadow);
