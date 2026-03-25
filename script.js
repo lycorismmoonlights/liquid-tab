@@ -405,10 +405,10 @@ function getTrueGlassTintOpacity(role = "secondary") {
   }
 
   if (role === "primary") {
-    return isTransparent ? 0.055 : 0.08;
+    return isTransparent ? 0.045 : 0.068;
   }
 
-  return isTransparent ? 0.038 : 0.055;
+  return isTransparent ? 0.03 : 0.045;
 }
 
 function getTrueGlassTypeForElement(element) {
