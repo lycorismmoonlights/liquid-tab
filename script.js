@@ -822,16 +822,11 @@ document.querySelectorAll("[data-engine-choice]").forEach((button) => {
   });
 });
 
-if (widgetPicker) {
-  widgetPicker.addEventListener("click", (event) => {
-    const button = event.target.closest("[data-component-choice]");
-    if (!button) {
-      return;
-    }
-
+document.querySelectorAll("[data-component-choice]").forEach((button) => {
+  button.addEventListener("click", () => {
     toggleComponentVisibility(button.dataset.componentChoice);
   });
-}
+});
 
 document.addEventListener("click", (event) => {
   const link = event.target.closest("[data-recent-link]");
