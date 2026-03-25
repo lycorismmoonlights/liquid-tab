@@ -12,6 +12,7 @@ const SEARCH_ENGINES = {
   bing: "https://www.bing.com/search?q="
 };
 
+const LIQUID_SNAPSHOT_TARGET = ".scene__capture";
 const MAX_WALLPAPER_DIMENSION = 1600;
 const MAX_WALLPAPER_LENGTH = 1800000;
 const MAX_RECENT_ITEMS = 4;
@@ -225,9 +226,9 @@ function getLiquidPreset() {
   if (state.style === "transparent") {
     return {
       refraction: 0,
-      bevelDepth: 0.035,
-      bevelWidth: 0.12,
-      frost: 0.6,
+      bevelDepth: 0.02,
+      bevelWidth: 0.08,
+      frost: 0.08,
       shadow: false,
       specular: false,
       magnify: 1
@@ -236,12 +237,12 @@ function getLiquidPreset() {
 
   return {
     refraction: 0,
-    bevelDepth: 0.052,
-    bevelWidth: 0.211,
-    frost: 2,
+    bevelDepth: 0.036,
+    bevelWidth: 0.14,
+    frost: 0.42,
     shadow: false,
     specular: !state.reduceMotion,
-    magnify: 1.01
+    magnify: 1.002
   };
 }
 
@@ -302,9 +303,9 @@ function initLiquidGlass() {
 
   try {
     const effect = window.liquidGL({
-      snapshot: "body",
+      snapshot: LIQUID_SNAPSHOT_TARGET,
       target: ".liquid-lens",
-      resolution: 1.5,
+      resolution: 2,
       tilt: false,
       reveal: state.reduceMotion ? "none" : "fade",
       ...getLiquidPreset(),
