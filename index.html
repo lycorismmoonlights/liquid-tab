@@ -66,40 +66,51 @@
         </div>
       </form>
 
-      <div class="mode-pills reveal delay-2" role="group" aria-label="风格切换">
-        <button class="mode-pill is-active" data-style-choice="liquid" type="button">液态玻璃</button>
-        <button class="mode-pill" data-style-choice="transparent" type="button">纯透明</button>
-      </div>
-
-      <section class="quick-grid reveal delay-3" aria-label="快捷入口">
-        <a class="quick-card glass-shell" href="https://www.google.com" rel="noreferrer">
+      <section class="quick-grid reveal delay-2" aria-label="快捷入口">
+        <a class="quick-card glass-shell" href="https://www.google.com" rel="noreferrer" data-recent-link data-recent-title="Google">
           <div class="liquid-lens liquid-lens--card" aria-hidden="true"></div>
           <span class="quick-card__content glass-content" data-liquid-ignore>
             <span class="quick-card__icon">G</span>
             <span class="quick-card__label">Google</span>
           </span>
         </a>
-        <a class="quick-card glass-shell" href="https://www.youtube.com" rel="noreferrer">
+        <a class="quick-card glass-shell" href="https://www.youtube.com" rel="noreferrer" data-recent-link data-recent-title="YouTube">
           <div class="liquid-lens liquid-lens--card" aria-hidden="true"></div>
           <span class="quick-card__content glass-content" data-liquid-ignore>
             <span class="quick-card__icon">Y</span>
             <span class="quick-card__label">YouTube</span>
           </span>
         </a>
-        <a class="quick-card glass-shell" href="https://www.github.com" rel="noreferrer">
+        <a class="quick-card glass-shell" href="https://www.github.com" rel="noreferrer" data-recent-link data-recent-title="GitHub">
           <div class="liquid-lens liquid-lens--card" aria-hidden="true"></div>
           <span class="quick-card__content glass-content" data-liquid-ignore>
             <span class="quick-card__icon">GH</span>
             <span class="quick-card__label">GitHub</span>
           </span>
         </a>
-        <a class="quick-card glass-shell" href="https://www.notion.so" rel="noreferrer">
+        <a class="quick-card glass-shell" href="https://www.pixiv.net" rel="noreferrer" data-recent-link data-recent-title="Pixiv">
           <div class="liquid-lens liquid-lens--card" aria-hidden="true"></div>
           <span class="quick-card__content glass-content" data-liquid-ignore>
-            <span class="quick-card__icon">N</span>
-            <span class="quick-card__label">Notion</span>
+            <span class="quick-card__icon">P</span>
+            <span class="quick-card__label">Pixiv</span>
           </span>
         </a>
+      </section>
+
+      <section class="recent-shell glass-shell reveal delay-3" aria-labelledby="recent-title">
+        <div class="liquid-lens liquid-lens--recent" aria-hidden="true"></div>
+        <div class="recent-panel glass-content" data-liquid-ignore>
+          <div class="recent-header">
+            <div>
+              <p class="recent-eyebrow">Recent</p>
+              <h2 class="recent-title" id="recent-title">最近浏览</h2>
+            </div>
+            <button class="recent-clear" id="recent-clear" type="button">清空</button>
+          </div>
+
+          <div class="recent-list" id="recent-list"></div>
+          <p class="recent-empty" id="recent-empty">你从这个起始页打开过的网址和搜索词，会出现在这里。</p>
+        </div>
       </section>
     </main>
 
@@ -141,12 +152,12 @@
       <h2 class="sheet__title" id="tabs-title">常用入口</h2>
     </div>
     <div class="sheet__grid">
-      <a class="sheet-link" href="https://mail.google.com" rel="noreferrer">Gmail</a>
-      <a class="sheet-link" href="https://www.figma.com" rel="noreferrer">Figma</a>
-      <a class="sheet-link" href="https://x.com" rel="noreferrer">X</a>
-      <a class="sheet-link" href="https://www.reddit.com" rel="noreferrer">Reddit</a>
-      <a class="sheet-link" href="https://drive.google.com" rel="noreferrer">Drive</a>
-      <a class="sheet-link" href="https://calendar.google.com" rel="noreferrer">Calendar</a>
+      <a class="sheet-link" href="https://mail.google.com" rel="noreferrer" data-recent-link data-recent-title="Gmail">Gmail</a>
+      <a class="sheet-link" href="https://www.figma.com" rel="noreferrer" data-recent-link data-recent-title="Figma">Figma</a>
+      <a class="sheet-link" href="https://x.com" rel="noreferrer" data-recent-link data-recent-title="X">X</a>
+      <a class="sheet-link" href="https://www.reddit.com" rel="noreferrer" data-recent-link data-recent-title="Reddit">Reddit</a>
+      <a class="sheet-link" href="https://drive.google.com" rel="noreferrer" data-recent-link data-recent-title="Drive">Drive</a>
+      <a class="sheet-link" href="https://calendar.google.com" rel="noreferrer" data-recent-link data-recent-title="Calendar">Calendar</a>
     </div>
   </section>
 

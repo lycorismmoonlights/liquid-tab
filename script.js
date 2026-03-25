@@ -2,7 +2,8 @@ const STORAGE_KEYS = {
   style: "liquid-tab-style",
   engine: "liquid-tab-engine",
   reduceMotion: "liquid-tab-reduce-motion",
-  wallpaper: "liquid-tab-wallpaper"
+  wallpaper: "liquid-tab-wallpaper",
+  recent: "liquid-tab-recent"
 };
 
 const SEARCH_ENGINES = {
@@ -13,12 +14,14 @@ const SEARCH_ENGINES = {
 
 const MAX_WALLPAPER_DIMENSION = 1600;
 const MAX_WALLPAPER_LENGTH = 1800000;
+const MAX_RECENT_ITEMS = 4;
 
 const state = {
   style: localStorage.getItem(STORAGE_KEYS.style) || "liquid",
   engine: localStorage.getItem(STORAGE_KEYS.engine) || "google",
   reduceMotion: localStorage.getItem(STORAGE_KEYS.reduceMotion) === "true",
-  wallpaper: localStorage.getItem(STORAGE_KEYS.wallpaper) || ""
+  wallpaper: localStorage.getItem(STORAGE_KEYS.wallpaper) || "",
+  recent: []
 };
 
 const body = document.body;
@@ -35,12 +38,144 @@ const wallpaperInput = document.getElementById("wallpaper-input");
 const wallpaperUpload = document.getElementById("wallpaper-upload");
 const wallpaperReset = document.getElementById("wallpaper-reset");
 const wallpaperMeta = document.getElementById("wallpaper-meta");
+const recentList = document.getElementById("recent-list");
+const recentEmpty = document.getElementById("recent-empty");
+const recentClear = document.getElementById("recent-clear");
 
 let liquidLenses = [];
 let liquidGlassReady = false;
 let liquidSnapshotFrame = 0;
 let wallpaperBusy = false;
 let wallpaperMessage = "";
+
+function parseRecentEntries(rawValue) {
+  if (!rawValue) {
+    return [];
+  }
+
+  try {
+    const parsed = JSON.parse(rawValue);
+    if (!Array.isArray(parsed)) {
+      return [];
+    }
+
+    return parsed
+      .filter((entry) => entry && typeof entry.url === "string" && typeof entry.title === "string")
+      .slice(0, MAX_RECENT_ITEMS);
+  } catch (error) {
+    return [];
+  }
+}
+
+function getHostLabel(url) {
+  try {
+    const parsedUrl = new URL(url);
+    return parsedUrl.hostname.replace(/^www\./, "");
+  } catch (error) {
+    return url;
+  }
+}
+
+function getInitials(title) {
+  const cleaned = title.replace(/https?:\/\//gi, "").trim();
+  if (!cleaned) {
+    return "?";
+  }
+
+  const words = cleaned.split(/[\s./_-]+/).filter(Boolean);
+  if (words.length >= 2) {
+    return `${words[0][0]}${words[1][0]}`.slice(0, 2).toUpperCase();
+  }
+
+  return cleaned.slice(0, 2).toUpperCase();
+}
+
+function formatRecentMeta(entry) {
+  if (entry.type === "search") {
+    return `${entry.engineLabel || "搜索"} · ${entry.meta || "刚刚访问"}`;
+  }
+
+  return entry.meta || getHostLabel(entry.url);
+}
+
+function renderRecentEntries() {
+  if (!recentList || !recentEmpty || !recentClear) {
+    return;
+  }
+
+  recentList.textContent = "";
+
+  if (!state.recent.length) {
+    recentEmpty.hidden = false;
+    recentClear.hidden = true;
+    return;
+  }
+
+  recentEmpty.hidden = true;
+  recentClear.hidden = false;
+
+  state.recent.forEach((entry) => {
+    const item = document.createElement("a");
+    item.className = "recent-item";
+    item.href = entry.url;
+    item.rel = "noreferrer";
+    item.dataset.recentLink = "";
+    item.dataset.recentTitle = entry.title;
+    item.dataset.recentMeta = entry.meta || "";
+    item.dataset.recentType = entry.type || "link";
+
+    const icon = document.createElement("span");
+    icon.className = "recent-item__icon";
+    icon.textContent = getInitials(entry.title);
+
+    const copy = document.createElement("span");
+    copy.className = "recent-item__copy";
+
+    const title = document.createElement("span");
+    title.className = "recent-item__title";
+    title.textContent = entry.title;
+
+    const meta = document.createElement("span");
+    meta.className = "recent-item__meta";
+    meta.textContent = formatRecentMeta(entry);
+
+    const arrow = document.createElement("span");
+    arrow.className = "recent-item__arrow";
+    arrow.setAttribute("aria-hidden", "true");
+    arrow.textContent = "›";
+
+    copy.append(title, meta);
+    item.append(icon, copy, arrow);
+
+    recentList.appendChild(item);
+  });
+}
+
+function persistRecentEntries() {
+  localStorage.setItem(STORAGE_KEYS.recent, JSON.stringify(state.recent));
+}
+
+function addRecentEntry(entry) {
+  if (!entry || !entry.url || !entry.title) {
+    return;
+  }
+
+  const normalizedEntry = {
+    title: entry.title.trim(),
+    url: entry.url,
+    meta: entry.meta || getHostLabel(entry.url),
+    type: entry.type || "link",
+    engineLabel: entry.engineLabel || ""
+  };
+
+  state.recent = [
+    normalizedEntry,
+    ...state.recent.filter((item) => item.url !== normalizedEntry.url)
+  ].slice(0, MAX_RECENT_ITEMS);
+
+  persistRecentEntries();
+  renderRecentEntries();
+}
 
 function syncWallpaperControls() {
   wallpaperUpload.disabled = wallpaperBusy;
@@ -209,12 +344,30 @@ function submitSearch(rawValue) {
   }
 
   if (looksLikeUrl(value)) {
-    window.location.href = normalizeUrl(value);
+    const normalizedUrl = normalizeUrl(value);
+    addRecentEntry({
+      title: getHostLabel(normalizedUrl),
+      url: normalizedUrl,
+      meta: "网址直达",
+      type: "link"
+    });
+    window.location.href = normalizedUrl;
     return;
   }
 
   const engineUrl = SEARCH_ENGINES[state.engine] || SEARCH_ENGINES.google;
-  window.location.href = `${engineUrl}${encodeURIComponent(value)}`;
+  const searchUrl = `${engineUrl}${encodeURIComponent(value)}`;
+  const engineLabel = state.engine === "duck" ? "DuckDuckGo" : state.engine === "bing" ? "Bing" : "Google";
+
+  addRecentEntry({
+    title: value,
+    url: searchUrl,
+    meta: "搜索记录",
+    type: "search",
+    engineLabel
+  });
+
+  window.location.href = searchUrl;
 }
 
 function closeSheets() {
@@ -378,6 +531,20 @@ document.querySelectorAll("[data-engine-choice]").forEach((button) => {
   });
 });
 
+document.addEventListener("click", (event) => {
+  const link = event.target.closest("[data-recent-link]");
+  if (!link || !(link instanceof HTMLAnchorElement)) {
+    return;
+  }
+
+  addRecentEntry({
+    title: (link.dataset.recentTitle || link.textContent || getHostLabel(link.href)).trim(),
+    url: link.href,
+    meta: link.dataset.recentMeta || getHostLabel(link.href),
+    type: link.dataset.recentType || "link"
+  });
+});
+
 wallpaperUpload.addEventListener("click", () => {
   wallpaperInput.click();
 });
@@ -433,6 +600,12 @@ motionToggle.addEventListener("change", () => {
   applyState();
 });
 
+recentClear.addEventListener("click", () => {
+  state.recent = [];
+  localStorage.removeItem(STORAGE_KEYS.recent);
+  renderRecentEntries();
+});
+
 document.addEventListener("keydown", (event) => {
   if (event.key === "Escape") {
     closeSheets();
@@ -440,8 +613,10 @@ document.addEventListener("keydown", (event) => {
 });
 
 tabBadge.textContent = String(document.querySelectorAll(".quick-card").length).padStart(2, "0");
+state.recent = parseRecentEntries(localStorage.getItem(STORAGE_KEYS.recent));
 
 applyState();
+renderRecentEntries();
 
 const wallpaperReady = restoreWallpaper();
 
