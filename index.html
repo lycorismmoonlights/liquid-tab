@@ -1,0 +1,191 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#24344c">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Liquid Tab">
+  <meta name="description" content="A mobile-first liquid glass start page for iPhone browsers.">
+  <title>Liquid Tab</title>
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="assets/icon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body data-style="liquid">
+  <div class="scene" aria-hidden="true">
+    <div class="scene__glow scene__glow--top"></div>
+    <div class="scene__glow scene__glow--mid"></div>
+    <div class="scene__glow scene__glow--bottom"></div>
+    <div class="scene__cloud scene__cloud--one"></div>
+    <div class="scene__cloud scene__cloud--two"></div>
+    <div class="scene__cloud scene__cloud--three"></div>
+    <div class="scene__cityline"></div>
+  </div>
+
+  <div class="page-shell">
+    <header class="topbar reveal">
+      <div class="status-cluster surface surface--ghost">
+        <div class="status-meta">
+          <span class="status-time" id="status-time">10:52</span>
+          <span class="status-signal">5G</span>
+        </div>
+        <div class="status-battery">
+          <span>42</span>
+        </div>
+      </div>
+
+      <div class="island-row reveal delay-1">
+        <div class="dynamic-island"></div>
+        <button class="avatar-badge surface surface--ghost" id="profile-toggle" type="button" aria-label="打开设置">
+          <span>LT</span>
+        </button>
+      </div>
+    </header>
+
+    <main class="hero">
+      <div class="hero-copy reveal delay-2">
+        <p class="eyebrow">iPhone Start Page</p>
+        <h1 class="wordmark">Google</h1>
+        <p class="subtitle">把白边藏起来，让底部像漂浮在壁纸上。</p>
+      </div>
+
+      <form class="search-panel surface reveal delay-3" id="search-form">
+        <div class="search-mark" aria-hidden="true">
+          <span class="search-mark__g">G</span>
+        </div>
+
+        <label class="sr-only" for="search-input">搜索或输入网址</label>
+        <input
+          id="search-input"
+          class="search-input"
+          type="text"
+          name="q"
+          inputmode="search"
+          autocomplete="off"
+          placeholder="在 Google 中搜索或输入网址"
+        >
+
+        <div class="search-actions">
+          <button class="icon-button" id="paste-button" type="button" aria-label="粘贴">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M9 4h6m-5 3h4m-7 2.5V18a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V9.5a2 2 0 0 0-.59-1.41l-2.5-2.5A2 2 0 0 0 14.5 5H9a2 2 0 0 0-2 2v2.5Zm-2 1h-.5A2.5 2.5 0 0 0 2 13v5.5A3.5 3.5 0 0 0 5.5 22H11"/>
+            </svg>
+          </button>
+          <button class="icon-button icon-button--filled" type="submit" aria-label="搜索">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M10.5 5a5.5 5.5 0 1 0 0 11a5.5 5.5 0 0 0 0-11Zm7.5 13l-3.1-3.1"/>
+            </svg>
+          </button>
+        </div>
+      </form>
+
+      <div class="mode-pills reveal delay-4" role="group" aria-label="风格切换">
+        <button class="mode-pill is-active" data-style-choice="liquid" type="button">液态玻璃</button>
+        <button class="mode-pill" data-style-choice="transparent" type="button">纯透明</button>
+      </div>
+
+      <section class="quick-grid reveal delay-5" aria-label="快捷入口">
+        <a class="quick-card surface" href="https://www.google.com" rel="noreferrer">
+          <span class="quick-card__icon">G</span>
+          <span class="quick-card__label">Google</span>
+        </a>
+        <a class="quick-card surface" href="https://www.youtube.com" rel="noreferrer">
+          <span class="quick-card__icon">Y</span>
+          <span class="quick-card__label">YouTube</span>
+        </a>
+        <a class="quick-card surface" href="https://www.github.com" rel="noreferrer">
+          <span class="quick-card__icon">GH</span>
+          <span class="quick-card__label">GitHub</span>
+        </a>
+        <a class="quick-card surface" href="https://www.notion.so" rel="noreferrer">
+          <span class="quick-card__icon">N</span>
+          <span class="quick-card__label">Notion</span>
+        </a>
+      </section>
+    </main>
+
+    <nav class="dock surface reveal delay-6" aria-label="底部操作">
+      <button class="dock-button" id="nav-back" type="button" aria-label="后退">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M14.5 5.5L8 12l6.5 6.5"/>
+        </svg>
+      </button>
+      <button class="dock-button" id="nav-forward" type="button" aria-label="前进">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M9.5 5.5L16 12l-6.5 6.5"/>
+        </svg>
+      </button>
+      <button class="dock-button dock-button--primary" id="nav-search" type="button" aria-label="聚焦搜索">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M12 5v14M5 12h14"/>
+        </svg>
+      </button>
+      <button class="dock-button" id="nav-tabs" type="button" aria-label="快捷卡片">
+        <span class="tab-badge" id="tab-badge">04</span>
+      </button>
+      <button class="dock-button" id="nav-menu" type="button" aria-label="更多设置">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M5 12h.01M12 12h.01M19 12h.01"/>
+        </svg>
+      </button>
+    </nav>
+  </div>
+
+  <div class="sheet-backdrop" id="sheet-backdrop" hidden></div>
+
+  <section class="sheet" id="tabs-sheet" aria-labelledby="tabs-title" hidden>
+    <div class="sheet__header">
+      <p class="sheet__eyebrow">Quick Deck</p>
+      <h2 class="sheet__title" id="tabs-title">常用入口</h2>
+    </div>
+    <div class="sheet__grid">
+      <a class="sheet-link" href="https://mail.google.com" rel="noreferrer">Gmail</a>
+      <a class="sheet-link" href="https://www.figma.com" rel="noreferrer">Figma</a>
+      <a class="sheet-link" href="https://x.com" rel="noreferrer">X</a>
+      <a class="sheet-link" href="https://www.reddit.com" rel="noreferrer">Reddit</a>
+      <a class="sheet-link" href="https://drive.google.com" rel="noreferrer">Drive</a>
+      <a class="sheet-link" href="https://calendar.google.com" rel="noreferrer">Calendar</a>
+    </div>
+  </section>
+
+  <section class="sheet" id="settings-sheet" aria-labelledby="settings-title" hidden>
+    <div class="sheet__header">
+      <p class="sheet__eyebrow">Preferences</p>
+      <h2 class="sheet__title" id="settings-title">页面设置</h2>
+    </div>
+
+    <div class="setting-group">
+      <p class="setting-label">视觉风格</p>
+      <div class="segmented">
+        <button class="segment is-active" data-style-choice="liquid" type="button">液态玻璃</button>
+        <button class="segment" data-style-choice="transparent" type="button">纯透明</button>
+      </div>
+    </div>
+
+    <div class="setting-group">
+      <p class="setting-label">搜索引擎</p>
+      <div class="segmented segmented--three">
+        <button class="segment is-active" data-engine-choice="google" type="button">Google</button>
+        <button class="segment" data-engine-choice="duck" type="button">Duck</button>
+        <button class="segment" data-engine-choice="bing" type="button">Bing</button>
+      </div>
+    </div>
+
+    <div class="setting-group">
+      <label class="toggle-row" for="motion-toggle">
+        <span>
+          <strong>降低动态效果</strong>
+          <small>减少漂浮动画和背景位移</small>
+        </span>
+        <input id="motion-toggle" type="checkbox">
+      </label>
+    </div>
+
+    <p class="sheet-note">iPhone 上想更像独立标签页：Safari 打开后点“分享”，再选“添加到主屏幕”。</p>
+  </section>
+
+  <script src="script.js"></script>
+</body>
+</html>

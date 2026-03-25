@@ -1,0 +1,11 @@
+*.iml
+.DS_Store
+._*
+.gradle/
+.idea/
+.vercel/
+node_modules/
+local.properties
+captures/
+build/
+app/build/
