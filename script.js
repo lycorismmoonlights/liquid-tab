@@ -13,7 +13,10 @@ const SEARCH_ENGINES = {
 };
 
 const LIQUID_SNAPSHOT_TARGET = ".scene__capture";
-const MAX_WALLPAPER_DIMENSION = 1600;
+const IPHONE_15_PRO_WALLPAPER = {
+  width: 1179,
+  height: 2556
+};
 const MAX_WALLPAPER_LENGTH = 1800000;
 const MAX_RECENT_ITEMS = 4;
 
@@ -42,12 +45,20 @@ const wallpaperMeta = document.getElementById("wallpaper-meta");
 const recentList = document.getElementById("recent-list");
 const recentEmpty = document.getElementById("recent-empty");
 const recentClear = document.getElementById("recent-clear");
+const cropperBackdrop = document.getElementById("cropper-backdrop");
+const cropper = document.getElementById("cropper");
+const cropperFrame = document.getElementById("cropper-frame");
+const cropperSurface = document.getElementById("cropper-surface");
+const cropperZoom = document.getElementById("cropper-zoom");
+const cropperCancel = document.getElementById("cropper-cancel");
+const cropperApply = document.getElementById("cropper-apply");
 
 let liquidLenses = [];
 let liquidGlassReady = false;
 let liquidSnapshotFrame = 0;
 let wallpaperBusy = false;
 let wallpaperMessage = "";
+let cropState = null;
 
 function parseRecentEntries(rawValue) {
   if (!rawValue) {
@@ -200,6 +211,17 @@ function setWallpaperBusy(isBusy) {
 function setWallpaperMessage(message = "") {
   wallpaperMessage = message;
   syncWallpaperControls();
+}
+
+function syncViewportHeight() {
+  const viewportHeight = Math.round(window.innerHeight || document.documentElement.clientHeight || 0);
+  if (viewportHeight > 0) {
+    document.documentElement.style.setProperty("--viewport-height", `${viewportHeight}px`);
+  }
+}
+
+function clamp(value, min, max) {
+  return Math.min(max, Math.max(min, value));
 }
 
 function applyState() {
@@ -384,15 +406,6 @@ function openSheet(sheet) {
   sheetBackdrop.hidden = false;
 }
 
-function readFileAsDataUrl(file) {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(String(reader.result || ""));
-    reader.onerror = () => reject(new Error("图片读取失败，请换一张试试。"));
-    reader.readAsDataURL(file);
-  });
-}
-
 function loadImage(source) {
   return new Promise((resolve, reject) => {
     const image = new Image();
@@ -413,26 +426,144 @@ function renderImageToCanvas(canvas, image, width, height) {
   context.drawImage(image, 0, 0, width, height);
 }
 
-async function compressWallpaper(file) {
-  const sourceDataUrl = await readFileAsDataUrl(file);
-  const image = await loadImage(sourceDataUrl);
-  const canvas = document.createElement("canvas");
+function closeCropper() {
+  if (cropState && cropState.objectUrl) {
+    URL.revokeObjectURL(cropState.objectUrl);
+  }
 
-  let width = image.naturalWidth || image.width;
-  let height = image.naturalHeight || image.height;
-  const scale = Math.min(1, MAX_WALLPAPER_DIMENSION / Math.max(width, height));
+  cropState = null;
+  cropper.hidden = true;
+  cropperBackdrop.hidden = true;
+  cropperSurface.style.backgroundImage = "none";
+  cropperSurface.style.backgroundSize = "";
+  cropperSurface.style.backgroundPosition = "";
+  cropperSurface.classList.remove("is-dragging");
+  cropperZoom.value = "1";
+  cropperApply.disabled = false;
+  cropperCancel.disabled = false;
+}
 
-  width = Math.max(1, Math.round(width * scale));
-  height = Math.max(1, Math.round(height * scale));
+function getCropScale() {
+  return cropState ? cropState.baseScale * cropState.zoom : 1;
+}
 
-  let quality = 0.86;
-  let dataUrl = "";
+function clampCropOffsets() {
+  if (!cropState) {
+    return;
+  }
+
+  const scale = getCropScale();
+  const renderedWidth = cropState.image.naturalWidth * scale;
+  const renderedHeight = cropState.image.naturalHeight * scale;
+  const limitX = Math.max(0, (renderedWidth - cropState.frameWidth) / 2);
+  const limitY = Math.max(0, (renderedHeight - cropState.frameHeight) / 2);
+
+  cropState.offsetX = clamp(cropState.offsetX, -limitX, limitX);
+  cropState.offsetY = clamp(cropState.offsetY, -limitY, limitY);
+}
+
+function renderCropPreview() {
+  if (!cropState) {
+    return;
+  }
+
+  const scale = getCropScale();
+  cropperSurface.style.backgroundSize = `${cropState.image.naturalWidth * scale}px ${cropState.image.naturalHeight * scale}px`;
+  cropperSurface.style.backgroundPosition = `calc(50% + ${cropState.offsetX}px) calc(50% + ${cropState.offsetY}px)`;
+}
+
+function syncCropLayout(preserveOffset = false) {
+  if (!cropState || cropper.hidden) {
+    return;
+  }
+
+  const frameRect = cropperFrame.getBoundingClientRect();
+  if (!frameRect.width || !frameRect.height) {
+    return;
+  }
+
+  const previousScale = getCropScale();
+  const previousFrameWidth = cropState.frameWidth || frameRect.width;
+  const previousFrameHeight = cropState.frameHeight || frameRect.height;
+
+  cropState.frameWidth = frameRect.width;
+  cropState.frameHeight = frameRect.height;
+  cropState.baseScale = Math.max(
+    cropState.frameWidth / cropState.image.naturalWidth,
+    cropState.frameHeight / cropState.image.naturalHeight
+  );
+
+  if (preserveOffset && previousScale > 0) {
+    const nextScale = getCropScale();
+    cropState.offsetX *= cropState.frameWidth / previousFrameWidth;
+    cropState.offsetY *= cropState.frameHeight / previousFrameHeight;
+    if (nextScale !== previousScale) {
+      cropState.offsetX *= nextScale / previousScale;
+      cropState.offsetY *= nextScale / previousScale;
+    }
+  } else {
+    cropState.offsetX = 0;
+    cropState.offsetY = 0;
+  }
+
+  clampCropOffsets();
+  renderCropPreview();
+}
+
+async function openCropper(file) {
+  closeCropper();
+  const objectUrl = URL.createObjectURL(file);
+
+  setWallpaperBusy(true);
+  setWallpaperMessage("正在准备裁切...");
+  closeSheets();
+
+  try {
+    const image = await loadImage(objectUrl);
+
+    cropState = {
+      objectUrl,
+      image,
+      zoom: 1,
+      baseScale: 1,
+      offsetX: 0,
+      offsetY: 0,
+      frameWidth: 0,
+      frameHeight: 0,
+      pointerId: null,
+      startX: 0,
+      startY: 0,
+      startOffsetX: 0,
+      startOffsetY: 0
+    };
+
+    cropperZoom.value = "1";
+    cropperSurface.style.backgroundImage = `url("${objectUrl}")`;
+    cropper.hidden = false;
+    cropperBackdrop.hidden = false;
+
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        syncCropLayout();
+      });
+    });
+
+    setWallpaperMessage("拖动并裁切后再确认。");
+  } catch (error) {
+    URL.revokeObjectURL(objectUrl);
+    throw error;
+  } finally {
+    setWallpaperBusy(false);
+  }
+}
+
+function canvasToSizedWallpaper(canvas) {
+  let currentCanvas = canvas;
+  let quality = 0.9;
   let attempts = 0;
 
   while (attempts < 8) {
-    renderImageToCanvas(canvas, image, width, height);
-    dataUrl = canvas.toDataURL("image/jpeg", quality);
-
+    const dataUrl = currentCanvas.toDataURL("image/jpeg", quality);
     if (dataUrl.length <= MAX_WALLPAPER_LENGTH) {
       return dataUrl;
     }
@@ -440,14 +571,62 @@ async function compressWallpaper(file) {
     if (quality > 0.62) {
       quality = Math.max(0.62, quality - 0.08);
     } else {
-      width = Math.max(480, Math.round(width * 0.88));
-      height = Math.max(480, Math.round(height * 0.88));
+      const nextCanvas = document.createElement("canvas");
+      nextCanvas.width = Math.max(720, Math.round(currentCanvas.width * 0.88));
+      nextCanvas.height = Math.round(nextCanvas.width * (IPHONE_15_PRO_WALLPAPER.height / IPHONE_15_PRO_WALLPAPER.width));
+      renderImageToCanvas(nextCanvas, currentCanvas, nextCanvas.width, nextCanvas.height);
+      currentCanvas = nextCanvas;
+      quality = 0.86;
     }
 
     attempts += 1;
   }
 
-  throw new Error("这张图有点大，先裁一下或者换一张更小的。");
+  throw new Error("这张图还是有点大，换一张更简单的试试。");
+}
+
+function exportCroppedWallpaper() {
+  if (!cropState) {
+    throw new Error("还没有可裁切的图片。");
+  }
+
+  const scale = getCropScale();
+  const image = cropState.image;
+  const renderedWidth = image.naturalWidth * scale;
+  const renderedHeight = image.naturalHeight * scale;
+  const sourceWidth = Math.min(image.naturalWidth, cropState.frameWidth / scale);
+  const sourceHeight = Math.min(image.naturalHeight, cropState.frameHeight / scale);
+  const sourceX = clamp(
+    ((renderedWidth - cropState.frameWidth) / 2 - cropState.offsetX) / scale,
+    0,
+    image.naturalWidth - sourceWidth
+  );
+  const sourceY = clamp(
+    ((renderedHeight - cropState.frameHeight) / 2 - cropState.offsetY) / scale,
+    0,
+    image.naturalHeight - sourceHeight
+  );
+
+  const canvas = document.createElement("canvas");
+  canvas.width = IPHONE_15_PRO_WALLPAPER.width;
+  canvas.height = IPHONE_15_PRO_WALLPAPER.height;
+
+  const context = canvas.getContext("2d", { alpha: false });
+  context.imageSmoothingEnabled = true;
+  context.imageSmoothingQuality = "high";
+  context.drawImage(
+    image,
+    sourceX,
+    sourceY,
+    sourceWidth,
+    sourceHeight,
+    0,
+    0,
+    canvas.width,
+    canvas.height
+  );
+
+  return canvasToSizedWallpaper(canvas);
 }
 
 async function renderWallpaper(dataUrl) {
@@ -574,16 +753,94 @@ wallpaperInput.addEventListener("change", async (event) => {
     return;
   }
 
-  setWallpaperBusy(true);
-  setWallpaperMessage("正在处理壁纸...");
-
   try {
-    const compressedWallpaper = await compressWallpaper(file);
-    await setWallpaper(compressedWallpaper);
-    setWallpaperMessage("自定义壁纸已更新，只保存在当前浏览器。");
+    await openCropper(file);
   } catch (error) {
     console.warn("Wallpaper upload failed.", error);
     setWallpaperMessage(error.message || "壁纸上传失败，请换一张试试。");
+  }
+});
+
+cropperCancel.addEventListener("click", () => {
+  closeCropper();
+  setWallpaperMessage("");
+});
+
+cropperBackdrop.addEventListener("click", () => {
+  closeCropper();
+  setWallpaperMessage("");
+});
+
+cropperZoom.addEventListener("input", () => {
+  if (!cropState) {
+    return;
+  }
+
+  cropState.zoom = Number(cropperZoom.value);
+  clampCropOffsets();
+  renderCropPreview();
+});
+
+cropperSurface.addEventListener("pointerdown", (event) => {
+  if (!cropState) {
+    return;
+  }
+
+  cropState.pointerId = event.pointerId;
+  cropState.startX = event.clientX;
+  cropState.startY = event.clientY;
+  cropState.startOffsetX = cropState.offsetX;
+  cropState.startOffsetY = cropState.offsetY;
+  cropperSurface.classList.add("is-dragging");
+  cropperSurface.setPointerCapture(event.pointerId);
+});
+
+cropperSurface.addEventListener("pointermove", (event) => {
+  if (!cropState || cropState.pointerId !== event.pointerId) {
+    return;
+  }
+
+  cropState.offsetX = cropState.startOffsetX + (event.clientX - cropState.startX);
+  cropState.offsetY = cropState.startOffsetY + (event.clientY - cropState.startY);
+  clampCropOffsets();
+  renderCropPreview();
+});
+
+function releaseCropPointer(event) {
+  if (!cropState || cropState.pointerId !== event.pointerId) {
+    return;
+  }
+
+  cropState.pointerId = null;
+  cropperSurface.classList.remove("is-dragging");
+  if (cropperSurface.hasPointerCapture(event.pointerId)) {
+    cropperSurface.releasePointerCapture(event.pointerId);
+  }
+}
+
+cropperSurface.addEventListener("pointerup", releaseCropPointer);
+cropperSurface.addEventListener("pointercancel", releaseCropPointer);
+
+cropperApply.addEventListener("click", async () => {
+  if (!cropState) {
+    return;
+  }
+
+  setWallpaperBusy(true);
+  setWallpaperMessage("正在生成壁纸...");
+  cropperApply.disabled = true;
+  cropperCancel.disabled = true;
+
+  try {
+    const croppedWallpaper = exportCroppedWallpaper();
+    closeCropper();
+    await setWallpaper(croppedWallpaper);
+    setWallpaperMessage("自定义壁纸已更新，只保存在当前浏览器。");
+  } catch (error) {
+    console.warn("Wallpaper crop failed.", error);
+    setWallpaperMessage(error.message || "壁纸裁切失败，请换一张试试。");
+    cropperApply.disabled = false;
+    cropperCancel.disabled = false;
   } finally {
     setWallpaperBusy(false);
   }
@@ -609,13 +866,32 @@ recentClear.addEventListener("click", () => {
 
 document.addEventListener("keydown", (event) => {
   if (event.key === "Escape") {
+    if (!cropper.hidden) {
+      closeCropper();
+      setWallpaperMessage("");
+      return;
+    }
+
     closeSheets();
   }
 });
 
+function handleViewportResize() {
+  syncViewportHeight();
+  syncCropLayout(true);
+}
+
+window.addEventListener("resize", handleViewportResize);
+
+if (window.visualViewport) {
+  window.visualViewport.addEventListener("resize", handleViewportResize);
+  window.visualViewport.addEventListener("scroll", handleViewportResize);
+}
+
 tabBadge.textContent = String(document.querySelectorAll(".quick-card").length).padStart(2, "0");
 state.recent = parseRecentEntries(localStorage.getItem(STORAGE_KEYS.recent));
 
+handleViewportResize();
 applyState();
 renderRecentEntries();
 
