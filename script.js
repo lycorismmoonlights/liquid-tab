@@ -249,7 +249,7 @@ function syncThemeColor() {
     return;
   }
 
-  themeColorMeta.setAttribute("content", body.dataset.theme === "day" ? "#eef3fb" : "#24344c");
+  themeColorMeta.setAttribute("content", body.dataset.theme === "day" ? "#f5f8fc" : "#24344c");
 }
 
 function applyState() {
@@ -290,9 +290,9 @@ function getLiquidPreset() {
   if (state.style === "transparent") {
     return {
       refraction: 0,
-      bevelDepth: 0.02,
-      bevelWidth: 0.08,
-      frost: 0.08,
+      bevelDepth: 0.016,
+      bevelWidth: 0.06,
+      frost: 0.04,
       shadow: false,
       specular: false,
       magnify: 1
@@ -301,12 +301,12 @@ function getLiquidPreset() {
 
   return {
     refraction: 0,
-    bevelDepth: 0.036,
-    bevelWidth: 0.14,
-    frost: 0.42,
+    bevelDepth: 0.028,
+    bevelWidth: 0.11,
+    frost: 0.24,
     shadow: false,
     specular: !state.reduceMotion,
-    magnify: 1.002
+    magnify: 1.001
   };
 }
 
