@@ -18,6 +18,7 @@ const SEARCH_ENGINES = {
 
 const LIQUID_SNAPSHOT_TARGET = ".scene__capture";
 const LIQUID_TARGET_SELECTOR = ".liquid-lens--search, .liquid-lens--dock";
+const TRUE_GLASS_HOST_SELECTOR = ".search-shell, .quick-card, #recent-shell, .dock-shell, .hero-tool";
 const CROP_PRESETS = {
   default: {
     width: 1179,
@@ -85,6 +86,10 @@ const themeColorMeta = document.querySelector('meta[name="theme-color"]');
 let liquidLenses = [];
 let liquidGlassReady = false;
 let liquidSnapshotFrame = 0;
+let trueGlassContainers = [];
+let trueGlassReady = false;
+let trueGlassSnapshotFrame = 0;
+let trueGlassSnapshotPending = false;
 let wallpaperBusy = false;
 let wallpaperMessage = "";
 let cropState = null;
@@ -356,6 +361,297 @@ function applyState() {
   syncLiquidGlass();
 }
 
+function getTrueGlassControls() {
+  const theme = resolveTheme();
+  const isTransparent = state.style === "transparent";
+
+  if (theme === "day") {
+    return {
+      blurRadius: isTransparent ? 7.2 : 8.4,
+      edgeIntensity: isTransparent ? 0.012 : 0.015,
+      rimIntensity: isTransparent ? 0.055 : 0.075,
+      baseIntensity: isTransparent ? 0.004 : 0.006,
+      edgeDistance: 0.14,
+      rimDistance: 0.92,
+      baseDistance: 0.1,
+      cornerBoost: isTransparent ? 0.012 : 0.016,
+      rippleEffect: isTransparent ? 0.02 : 0.03
+    };
+  }
+
+  return {
+    blurRadius: isTransparent ? 7.8 : 9.4,
+    edgeIntensity: isTransparent ? 0.016 : 0.02,
+    rimIntensity: isTransparent ? 0.08 : 0.105,
+    baseIntensity: isTransparent ? 0.006 : 0.008,
+    edgeDistance: 0.12,
+    rimDistance: 0.82,
+    baseDistance: 0.12,
+    cornerBoost: isTransparent ? 0.018 : 0.026,
+    rippleEffect: isTransparent ? 0.03 : 0.05
+  };
+}
+
+function getTrueGlassTintOpacity(role = "secondary") {
+  const theme = resolveTheme();
+  const isTransparent = state.style === "transparent";
+
+  if (theme === "day") {
+    if (role === "primary") {
+      return isTransparent ? 0.08 : 0.12;
+    }
+
+    return isTransparent ? 0.06 : 0.1;
+  }
+
+  if (role === "primary") {
+    return isTransparent ? 0.12 : 0.18;
+  }
+
+  return isTransparent ? 0.09 : 0.14;
+}
+
+function getTrueGlassTypeForElement(element) {
+  if (element.classList.contains("hero-tool")) {
+    return "pill";
+  }
+
+  return "rounded";
+}
+
+function canUseTrueGlass() {
+  if (typeof window.Container !== "function" || typeof window.html2canvas !== "function") {
+    return false;
+  }
+
+  const testCanvas = document.createElement("canvas");
+  return Boolean(
+    testCanvas.getContext("webgl") ||
+    testCanvas.getContext("experimental-webgl")
+  );
+}
+
+function getTrueGlassRoleForElement(element) {
+  return element.classList.contains("search-shell") || element.classList.contains("dock-shell")
+    ? "primary"
+    : "secondary";
+}
+
+function applyTrueGlassUniforms(container) {
+  if (!container || !container.gl_refs || !container.gl_refs.gl) {
+    return;
+  }
+
+  const controls = window.glassControls || getTrueGlassControls();
+  const gl = container.gl_refs.gl;
+
+  if (container.gl_refs.blurRadiusLoc) {
+    gl.uniform1f(container.gl_refs.blurRadiusLoc, controls.blurRadius);
+  }
+
+  if (container.gl_refs.edgeIntensityLoc) {
+    gl.uniform1f(container.gl_refs.edgeIntensityLoc, controls.edgeIntensity);
+  }
+
+  if (container.gl_refs.rimIntensityLoc) {
+    gl.uniform1f(container.gl_refs.rimIntensityLoc, controls.rimIntensity);
+  }
+
+  if (container.gl_refs.baseIntensityLoc) {
+    gl.uniform1f(container.gl_refs.baseIntensityLoc, controls.baseIntensity);
+  }
+
+  if (container.gl_refs.edgeDistanceLoc) {
+    gl.uniform1f(container.gl_refs.edgeDistanceLoc, controls.edgeDistance);
+  }
+
+  if (container.gl_refs.rimDistanceLoc) {
+    gl.uniform1f(container.gl_refs.rimDistanceLoc, controls.rimDistance);
+  }
+
+  if (container.gl_refs.baseDistanceLoc) {
+    gl.uniform1f(container.gl_refs.baseDistanceLoc, controls.baseDistance);
+  }
+
+  if (container.gl_refs.cornerBoostLoc) {
+    gl.uniform1f(container.gl_refs.cornerBoostLoc, controls.cornerBoost);
+  }
+
+  if (container.gl_refs.rippleEffectLoc) {
+    gl.uniform1f(container.gl_refs.rippleEffectLoc, controls.rippleEffect);
+  }
+
+  if (container.gl_refs.tintOpacityLoc) {
+    gl.uniform1f(container.gl_refs.tintOpacityLoc, container.tintOpacity);
+  }
+
+  if (typeof container.render === "function") {
+    container.render();
+  }
+}
+
+function initTrueGlassForElement(element) {
+  if (!(element instanceof HTMLElement)) {
+    return null;
+  }
+
+  const computedStyle = window.getComputedStyle(element);
+  const borderRadius = parseFloat(computedStyle.borderTopLeftRadius) || 24;
+  const role = getTrueGlassRoleForElement(element);
+  const type = getTrueGlassTypeForElement(element);
+
+  element.classList.add("glass-container", "true-glass-host");
+  element.dataset.trueGlassRole = role;
+
+  if (computedStyle.position === "static") {
+    element.style.position = "relative";
+  }
+
+  const container = new window.Container({
+    borderRadius,
+    type,
+    tintOpacity: getTrueGlassTintOpacity(role)
+  });
+  const detachedHost = container.element;
+  const canvas = container.canvas;
+
+  if (canvas && canvas.parentNode) {
+    canvas.parentNode.removeChild(canvas);
+  }
+
+  if (canvas) {
+    canvas.classList.add("true-glass-canvas");
+    canvas.setAttribute("aria-hidden", "true");
+    canvas.style.zIndex = "0";
+    canvas.style.pointerEvents = "none";
+    canvas.style.boxShadow = "none";
+    element.insertBefore(canvas, element.firstChild);
+  }
+
+  container.element = element;
+
+  if (detachedHost && detachedHost.isConnected) {
+    detachedHost.remove();
+  }
+
+  requestAnimationFrame(() => {
+    container.updateSizeFromDOM();
+    applyTrueGlassUniforms(container);
+  });
+
+  return container;
+}
+
+function syncTrueGlass() {
+  if (!trueGlassReady) {
+    return;
+  }
+
+  window.glassControls = getTrueGlassControls();
+
+  trueGlassContainers.forEach((container) => {
+    if (!container || !container.element) {
+      return;
+    }
+
+    container.tintOpacity = getTrueGlassTintOpacity(container.element.dataset.trueGlassRole || "secondary");
+    container.updateSizeFromDOM();
+    applyTrueGlassUniforms(container);
+  });
+}
+
+async function captureTrueGlassSnapshot() {
+  if (!trueGlassReady || trueGlassSnapshotPending || typeof window.html2canvas !== "function") {
+    return;
+  }
+
+  trueGlassSnapshotPending = true;
+
+  try {
+    const snapshot = await window.html2canvas(document.body, {
+      scale: 1,
+      useCORS: true,
+      allowTaint: true,
+      backgroundColor: null,
+      ignoreElements(element) {
+        return Boolean(
+          element.classList &&
+          (
+            element.classList.contains("glass-container") ||
+            element.classList.contains("glass-button") ||
+            element.classList.contains("glass-button-text")
+          )
+        );
+      }
+    });
+    const image = await loadImage(snapshot.toDataURL("image/png"));
+
+    window.Container.pageSnapshot = snapshot;
+
+    trueGlassContainers.forEach((container) => {
+      if (!container || !container.gl_refs || !container.gl_refs.gl || !container.gl_refs.texture) {
+        return;
+      }
+
+      const gl = container.gl_refs.gl;
+      gl.bindTexture(gl.TEXTURE_2D, container.gl_refs.texture);
+      gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, image);
+
+      if (container.gl_refs.textureSizeLoc) {
+        gl.uniform2f(container.gl_refs.textureSizeLoc, image.width, image.height);
+      }
+
+      applyTrueGlassUniforms(container);
+    });
+  } catch (error) {
+    console.warn("True glass snapshot refresh failed.", error);
+  } finally {
+    trueGlassSnapshotPending = false;
+  }
+}
+
+function refreshTrueGlassSnapshot() {
+  if (!trueGlassReady) {
+    return;
+  }
+
+  if (trueGlassSnapshotFrame) {
+    cancelAnimationFrame(trueGlassSnapshotFrame);
+  }
+
+  trueGlassSnapshotFrame = requestAnimationFrame(() => {
+    trueGlassSnapshotFrame = requestAnimationFrame(() => {
+      captureTrueGlassSnapshot();
+    });
+  });
+}
+
+function initTrueGlass() {
+  if (trueGlassReady || !canUseTrueGlass()) {
+    return false;
+  }
+
+  window.glassControls = getTrueGlassControls();
+  trueGlassContainers = Array.from(document.querySelectorAll(TRUE_GLASS_HOST_SELECTOR))
+    .map((element) => initTrueGlassForElement(element))
+    .filter(Boolean);
+
+  trueGlassReady = trueGlassContainers.length > 0;
+
+  if (!trueGlassReady) {
+    return false;
+  }
+
+  body.classList.add("true-glass-enabled");
+
+  requestAnimationFrame(() => {
+    syncTrueGlass();
+    refreshTrueGlassSnapshot();
+  });
+
+  return true;
+}
+
 function getLiquidPreset() {
   if (state.style === "transparent") {
     return {
@@ -381,6 +677,11 @@ function getLiquidPreset() {
 }
 
 function refreshLiquidGlassSnapshot() {
+  if (trueGlassReady) {
+    refreshTrueGlassSnapshot();
+    return;
+  }
+
   if (!liquidLenses.length) {
     return;
   }
@@ -410,6 +711,11 @@ function refreshLiquidGlassSnapshot() {
 }
 
 function syncLiquidGlass() {
+  if (trueGlassReady) {
+    syncTrueGlass();
+    return;
+  }
+
   if (!liquidLenses.length) {
     return;
   }
@@ -431,6 +737,10 @@ function syncLiquidGlass() {
 }
 
 function initLiquidGlass() {
+  if (initTrueGlass()) {
+    return;
+  }
+
   if (liquidGlassReady || typeof window.liquidGL !== "function" || typeof window.html2canvas !== "function") {
     return;
   }
@@ -1079,6 +1389,7 @@ document.addEventListener("keydown", (event) => {
 function handleViewportResize() {
   syncViewportHeight();
   syncCropLayout(true);
+  syncLiquidGlass();
 }
 
 window.addEventListener("resize", handleViewportResize);

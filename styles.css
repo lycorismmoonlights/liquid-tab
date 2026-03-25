@@ -424,6 +424,17 @@ body[data-browser-mode="chrome"] .subtitle {
   border-radius: inherit;
 }
 
+.true-glass-canvas {
+  position: absolute !important;
+  inset: 0;
+  width: 100% !important;
+  height: 100% !important;
+  border-radius: inherit;
+  z-index: 0 !important;
+  pointer-events: none;
+  box-shadow: none !important;
+}
+
 .glass-content {
   position: relative;
   z-index: 3;
@@ -470,6 +481,40 @@ body.liquid-gl-enabled .glass-shell--liquid::before {
   pointer-events: none;
   z-index: 2;
   mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0.96), rgba(0, 0, 0, 0.9) 52%, rgba(0, 0, 0, 0.62) 76%, transparent 100%);
+}
+
+body.true-glass-enabled .liquid-lens {
+  display: none;
+}
+
+body.true-glass-enabled .search-shell,
+body.true-glass-enabled .quick-card,
+body.true-glass-enabled .recent-shell,
+body.true-glass-enabled .dock-shell,
+body.true-glass-enabled .hero-tool {
+  background: transparent;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+body.true-glass-enabled .search-shell,
+body.true-glass-enabled .dock-shell {
+  border-color: var(--glass-overlay-border);
+  box-shadow: var(--glass-shadow);
+}
+
+body.true-glass-enabled .glass-shell--liquid::before {
+  inset: 0;
+  border-radius: inherit;
+  border: 1px solid var(--glass-overlay-border);
+  background: var(--glass-overlay);
+}
+
+body.true-glass-enabled .quick-card,
+body.true-glass-enabled .recent-shell,
+body.true-glass-enabled .hero-tool {
+  border-color: var(--surface-border);
+  box-shadow: var(--surface-shadow);
 }
 
 .search-shell {
