@@ -90,12 +90,17 @@ let trueGlassContainers = [];
 let trueGlassReady = false;
 let trueGlassSnapshotFrame = 0;
 let trueGlassSnapshotPending = false;
+let trueGlassRealtimeFrame = 0;
 let wallpaperBusy = false;
 let wallpaperMessage = "";
 let cropState = null;
 
 function getCropPreset() {
   return state.browserMode === "chrome" ? CROP_PRESETS.chrome : CROP_PRESETS.default;
+}
+
+function getTrueGlassSnapshotTarget() {
+  return document.querySelector(LIQUID_SNAPSHOT_TARGET) || document.body;
 }
 
 function syncCropperPreset() {
@@ -490,6 +495,57 @@ function applyTrueGlassUniforms(container) {
   }
 }
 
+function startTrueGlassRealtimeLoop() {
+  if (trueGlassRealtimeFrame) {
+    cancelAnimationFrame(trueGlassRealtimeFrame);
+  }
+
+  const roundMetric = (value) => Math.round(value * 2) / 2;
+
+  const tick = () => {
+    if (!trueGlassReady) {
+      trueGlassRealtimeFrame = 0;
+      return;
+    }
+
+    if (document.visibilityState !== "hidden") {
+      trueGlassContainers.forEach((container) => {
+        if (!container || typeof container.render !== "function" || !container.element) {
+          return;
+        }
+
+        if (container.element.dataset.trueGlassRole !== "primary") {
+          return;
+        }
+
+        const rect = container.element.getBoundingClientRect();
+        const visualViewport = window.visualViewport;
+        const signature = [
+          roundMetric(rect.top),
+          roundMetric(rect.left),
+          roundMetric(rect.width),
+          roundMetric(rect.height),
+          roundMetric(window.innerWidth),
+          roundMetric(window.innerHeight),
+          roundMetric(visualViewport ? visualViewport.offsetTop : 0),
+          roundMetric(visualViewport ? visualViewport.offsetLeft : 0),
+          roundMetric(visualViewport ? visualViewport.width : 0),
+          roundMetric(visualViewport ? visualViewport.height : 0)
+        ].join(":");
+
+        if (container.lastRealtimeSignature !== signature) {
+          container.lastRealtimeSignature = signature;
+          container.render();
+        }
+      });
+    }
+
+    trueGlassRealtimeFrame = requestAnimationFrame(tick);
+  };
+
+  trueGlassRealtimeFrame = requestAnimationFrame(tick);
+}
+
 function initTrueGlassForElement(element) {
   if (!(element instanceof HTMLElement)) {
     return null;
@@ -510,7 +566,8 @@ function initTrueGlassForElement(element) {
   const container = new window.Container({
     borderRadius,
     type,
-    tintOpacity: getTrueGlassTintOpacity(role)
+    tintOpacity: getTrueGlassTintOpacity(role),
+    useViewportTexture: true
   });
   const detachedHost = container.element;
   const canvas = container.canvas;
@@ -568,7 +625,8 @@ async function captureTrueGlassSnapshot() {
   trueGlassSnapshotPending = true;
 
   try {
-    const snapshot = await window.html2canvas(document.body, {
+    const snapshotTarget = getTrueGlassSnapshotTarget();
+    const snapshotOptions = {
       scale: 1,
       useCORS: true,
       allowTaint: true,
@@ -583,9 +641,21 @@ async function captureTrueGlassSnapshot() {
           )
         );
       }
-    });
+    };
+
+    if (snapshotTarget !== document.body) {
+      snapshotOptions.width = snapshotTarget.clientWidth || window.innerWidth;
+      snapshotOptions.height = snapshotTarget.clientHeight || window.innerHeight;
+      snapshotOptions.windowWidth = window.innerWidth;
+      snapshotOptions.windowHeight = window.innerHeight;
+      snapshotOptions.scrollX = 0;
+      snapshotOptions.scrollY = 0;
+    }
+
+    const snapshot = await window.html2canvas(snapshotTarget, snapshotOptions);
     const image = await loadImage(snapshot.toDataURL("image/png"));
 
+    window.glassSnapshotTarget = snapshotTarget;
     window.Container.pageSnapshot = snapshot;
 
     trueGlassContainers.forEach((container) => {
@@ -631,6 +701,7 @@ function initTrueGlass() {
     return false;
   }
 
+  window.glassSnapshotTarget = getTrueGlassSnapshotTarget();
   window.glassControls = getTrueGlassControls();
   trueGlassContainers = Array.from(document.querySelectorAll(TRUE_GLASS_HOST_SELECTOR))
     .map((element) => initTrueGlassForElement(element))
@@ -647,6 +718,7 @@ function initTrueGlass() {
   requestAnimationFrame(() => {
     syncTrueGlass();
     refreshTrueGlassSnapshot();
+    startTrueGlassRealtimeLoop();
   });
 
   return true;

@@ -10,6 +10,7 @@ class Container {
     this.borderRadius = options.borderRadius || 48
     this.type = options.type || 'rounded' // "rounded", "circle", or "pill"
     this.tintOpacity = options.tintOpacity !== undefined ? options.tintOpacity : 0.2
+    this.useViewportTexture = Boolean(options.useViewportTexture)
 
     this.canvas = null
     this.element = null
@@ -192,7 +193,8 @@ class Container {
 
   capturePageSnapshot() {
     console.log('Capturing page snapshot...')
-    html2canvas(document.body, {
+    const snapshotTarget = window.glassSnapshotTarget || document.body
+    const snapshotOptions = {
       scale: 1,
       useCORS: true,
       allowTaint: true,
@@ -205,7 +207,18 @@ class Container {
           element.classList.contains('glass-button-text')
         )
       }
-    })
+    }
+
+    if (snapshotTarget !== document.body) {
+      snapshotOptions.width = snapshotTarget.clientWidth || window.innerWidth
+      snapshotOptions.height = snapshotTarget.clientHeight || window.innerHeight
+      snapshotOptions.windowWidth = window.innerWidth
+      snapshotOptions.windowHeight = window.innerHeight
+      snapshotOptions.scrollX = 0
+      snapshotOptions.scrollY = 0
+    }
+
+    html2canvas(snapshotTarget, snapshotOptions)
       .then(snapshot => {
         console.log('Page snapshot captured')
         Container.pageSnapshot = snapshot
@@ -274,6 +287,7 @@ class Container {
       uniform float u_cornerBoost;
       uniform float u_rippleEffect;
       uniform float u_tintOpacity;
+      uniform float u_useViewportTexture;
     varying vec2 v_texcoord;
 
       // Function to calculate distance from rounded rectangle edge
@@ -345,7 +359,7 @@ class Container {
         vec2 textureSize = u_textureSize;
         
         // Container position in viewport coordinates
-        vec2 containerCenter = u_containerPosition + vec2(0.0, scrollY);
+        vec2 containerCenter = u_containerPosition + vec2(0.0, mix(scrollY, 0.0, u_useViewportTexture));
         
         // Convert container coordinates to page coordinates
         vec2 containerOffset = (coord - 0.5) * containerSize;
@@ -550,6 +564,7 @@ class Container {
     const cornerBoostLoc = gl.getUniformLocation(program, 'u_cornerBoost')
     const rippleEffectLoc = gl.getUniformLocation(program, 'u_rippleEffect')
     const tintOpacityLoc = gl.getUniformLocation(program, 'u_tintOpacity')
+    const useViewportTextureLoc = gl.getUniformLocation(program, 'u_useViewportTexture')
     const imageLoc = gl.getUniformLocation(program, 'u_image')
 
     // Create texture
@@ -585,6 +600,7 @@ class Container {
       cornerBoostLoc,
       rippleEffectLoc,
       tintOpacityLoc,
+      useViewportTextureLoc,
       imageLoc,
       positionBuffer,
       texcoordBuffer
@@ -617,6 +633,7 @@ class Container {
     gl.uniform1f(cornerBoostLoc, window.glassControls?.cornerBoost || 0.02)
     gl.uniform1f(rippleEffectLoc, window.glassControls?.rippleEffect || 0.1)
     gl.uniform1f(tintOpacityLoc, this.tintOpacity)
+    gl.uniform1f(useViewportTextureLoc, this.useViewportTexture ? 1.0 : 0.0)
 
     // Set initial position (will be updated in render loop)
     const position = this.getPosition()
