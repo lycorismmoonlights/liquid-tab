@@ -17,9 +17,17 @@ const SEARCH_ENGINES = {
 };
 
 const LIQUID_SNAPSHOT_TARGET = ".scene__capture";
-const IPHONE_15_PRO_WALLPAPER = {
-  width: 1179,
-  height: 2556
+const CROP_PRESETS = {
+  default: {
+    width: 1179,
+    height: 2556,
+    copy: "只有上传图片时才会出现。框选比例暂时按 iPhone 15 Pro 竖屏参考，拖动图片调整位置，再用下面的滑块缩放。"
+  },
+  chrome: {
+    width: 1179,
+    height: 1994,
+    copy: "只有上传图片时才会出现。当前 Chrome 模式会按你给的截图可视区域比例裁切，自动避开上下浏览器栏，拖动图片调整位置，再用下面的滑块缩放。"
+  }
 };
 const MAX_WALLPAPER_LENGTH = 1800000;
 const MAX_RECENT_ITEMS = 4;
@@ -70,6 +78,7 @@ const cropperImage = document.getElementById("cropper-image");
 const cropperZoom = document.getElementById("cropper-zoom");
 const cropperCancel = document.getElementById("cropper-cancel");
 const cropperApply = document.getElementById("cropper-apply");
+const cropperCopy = cropper ? cropper.querySelector(".cropper__copy") : null;
 const themeColorMeta = document.querySelector('meta[name="theme-color"]');
 
 let liquidLenses = [];
@@ -78,6 +87,20 @@ let liquidSnapshotFrame = 0;
 let wallpaperBusy = false;
 let wallpaperMessage = "";
 let cropState = null;
+
+function getCropPreset() {
+  return state.browserMode === "chrome" ? CROP_PRESETS.chrome : CROP_PRESETS.default;
+}
+
+function syncCropperPreset() {
+  const preset = getCropPreset();
+  cropperFrame.style.setProperty("--crop-frame-width", String(preset.width));
+  cropperFrame.style.setProperty("--crop-frame-height", String(preset.height));
+
+  if (cropperCopy) {
+    cropperCopy.textContent = preset.copy;
+  }
+}
 
 function parseRecentEntries(rawValue) {
   if (!rawValue) {
@@ -326,6 +349,8 @@ function applyState() {
   localStorage.setItem(STORAGE_KEYS.showRecent, String(state.showRecent));
   localStorage.setItem(STORAGE_KEYS.showQuickLinks, String(state.showQuickLinks));
   syncThemeColor();
+  syncCropperPreset();
+  syncCropLayout(true);
   syncWallpaperControls();
   syncLiquidGlass();
 }
@@ -654,7 +679,7 @@ async function openCropper(file) {
   }
 }
 
-function canvasToSizedWallpaper(canvas) {
+function canvasToSizedWallpaper(canvas, preset) {
   let currentCanvas = canvas;
   let quality = 0.9;
   let attempts = 0;
@@ -670,7 +695,7 @@ function canvasToSizedWallpaper(canvas) {
     } else {
       const nextCanvas = document.createElement("canvas");
       nextCanvas.width = Math.max(720, Math.round(currentCanvas.width * 0.88));
-      nextCanvas.height = Math.round(nextCanvas.width * (IPHONE_15_PRO_WALLPAPER.height / IPHONE_15_PRO_WALLPAPER.width));
+      nextCanvas.height = Math.round(nextCanvas.width * (preset.height / preset.width));
       renderImageToCanvas(nextCanvas, currentCanvas, nextCanvas.width, nextCanvas.height);
       currentCanvas = nextCanvas;
       quality = 0.86;
@@ -687,6 +712,7 @@ function exportCroppedWallpaper() {
     throw new Error("还没有可裁切的图片。");
   }
 
+  const preset = getCropPreset();
   const scale = getCropScale();
   const image = cropState.image;
   const renderedWidth = image.naturalWidth * scale;
@@ -705,8 +731,8 @@ function exportCroppedWallpaper() {
   );
 
   const canvas = document.createElement("canvas");
-  canvas.width = IPHONE_15_PRO_WALLPAPER.width;
-  canvas.height = IPHONE_15_PRO_WALLPAPER.height;
+  canvas.width = preset.width;
+  canvas.height = preset.height;
 
   const context = canvas.getContext("2d", { alpha: false });
   context.imageSmoothingEnabled = true;
@@ -723,7 +749,7 @@ function exportCroppedWallpaper() {
     canvas.height
   );
 
-  return canvasToSizedWallpaper(canvas);
+  return canvasToSizedWallpaper(canvas, preset);
 }
 
 async function renderWallpaper(dataUrl) {

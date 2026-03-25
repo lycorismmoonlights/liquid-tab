@@ -888,7 +888,7 @@ body.liquid-gl-enabled .dock-shell::after {
 .cropper__phone {
   position: relative;
   width: min(100%, 280px);
-  aspect-ratio: 393 / 852;
+  aspect-ratio: var(--crop-frame-width, 393) / var(--crop-frame-height, 852);
   border-radius: 34px;
   overflow: hidden;
   background: rgba(255, 255, 255, 0.06);
