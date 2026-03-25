@@ -112,6 +112,9 @@ function initLiquidGlass() {
 
     liquidLenses = Array.isArray(effect) ? effect.filter(Boolean) : [effect].filter(Boolean);
     liquidGlassReady = liquidLenses.length > 0;
+    if (typeof window.liquidGL.syncWith === "function") {
+      window.liquidGL.syncWith();
+    }
     syncLiquidGlass();
   } catch (error) {
     console.warn("liquidGL init failed, falling back to CSS glass.", error);

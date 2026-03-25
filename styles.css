@@ -247,26 +247,33 @@ input {
   -webkit-backdrop-filter: blur(28px) saturate(1.35);
 }
 
-.liquid-lens {
+.glass-shell {
   position: relative;
-  z-index: 2;
   overflow: clip;
   isolation: isolate;
-  transform: translateZ(0);
+  border-radius: inherit;
 }
 
-.liquid-lens > * {
+.liquid-lens {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  border-radius: inherit;
+}
+
+.glass-content {
   position: relative;
   z-index: 3;
 }
 
-.surface::before {
+.glass-shell::before {
   content: "";
   position: absolute;
   inset: 1px;
   border-radius: inherit;
   background: var(--surface-highlight);
   pointer-events: none;
+  z-index: 2;
 }
 
 .surface--ghost {
@@ -275,15 +282,13 @@ input {
   box-shadow: none;
 }
 
-body.liquid-gl-enabled .liquid-lens {
+body.liquid-gl-enabled .glass-shell {
   background: rgba(255, 255, 255, 0.045);
   border-color: rgba(255, 255, 255, 0.2);
   box-shadow: 0 22px 48px rgba(11, 16, 28, 0.18);
-  backdrop-filter: none;
-  -webkit-backdrop-filter: none;
 }
 
-body.liquid-gl-enabled .liquid-lens::before {
+body.liquid-gl-enabled .glass-shell::before {
   inset: 0;
   border-radius: inherit;
   border: 1px solid rgba(255, 255, 255, 0.2);
@@ -291,16 +296,27 @@ body.liquid-gl-enabled .liquid-lens::before {
     linear-gradient(180deg, rgba(255, 255, 255, 0.22), rgba(255, 255, 255, 0.04) 42%, rgba(255, 255, 255, 0.1));
 }
 
-body[data-style="transparent"].liquid-gl-enabled .liquid-lens {
+body[data-style="transparent"].liquid-gl-enabled .glass-shell {
   background: rgba(255, 255, 255, 0.018);
   border-color: rgba(255, 255, 255, 0.12);
   box-shadow: 0 16px 34px rgba(11, 16, 28, 0.12);
 }
 
-body[data-style="transparent"].liquid-gl-enabled .liquid-lens::before {
+body[data-style="transparent"].liquid-gl-enabled .glass-shell::before {
   border-color: rgba(255, 255, 255, 0.12);
   background:
     linear-gradient(180deg, rgba(255, 255, 255, 0.12), rgba(255, 255, 255, 0.01) 46%, rgba(255, 255, 255, 0.05));
+}
+
+.search-shell {
+  width: min(100%, 680px);
+  margin: 34px auto 0;
+  border-radius: 34px;
+  background: var(--surface-bg);
+  border: 1px solid var(--surface-border);
+  box-shadow: var(--surface-shadow);
+  backdrop-filter: blur(28px) saturate(1.35);
+  -webkit-backdrop-filter: blur(28px) saturate(1.35);
 }
 
 .search-panel {
@@ -308,10 +324,7 @@ body[data-style="transparent"].liquid-gl-enabled .liquid-lens::before {
   grid-template-columns: auto 1fr auto;
   align-items: center;
   gap: 12px;
-  width: min(100%, 680px);
-  margin: 34px auto 0;
   padding: 14px 14px 14px 16px;
-  border-radius: 34px;
 }
 
 .search-mark {
@@ -429,13 +442,22 @@ body.liquid-gl-enabled .tab-badge {
 }
 
 .quick-card {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 16px 16px;
+  position: relative;
+  padding: 16px;
   border-radius: 24px;
   text-decoration: none;
   color: var(--text-primary);
+  background: var(--surface-bg);
+  border: 1px solid var(--surface-border);
+  box-shadow: var(--surface-shadow);
+  backdrop-filter: blur(28px) saturate(1.35);
+  -webkit-backdrop-filter: blur(28px) saturate(1.35);
+}
+
+.quick-card__content {
+  display: flex;
+  align-items: center;
+  gap: 12px;
 }
 
 .quick-card__icon {
@@ -453,21 +475,27 @@ body.liquid-gl-enabled .tab-badge {
   font-weight: 600;
 }
 
-.dock {
+.dock-shell {
   position: fixed;
   left: max(14px, env(safe-area-inset-left));
   right: max(14px, env(safe-area-inset-right));
   bottom: calc(var(--bottom-safe) + 8px);
+  border-radius: 30px;
+  background: var(--dock-bg);
+  box-shadow: var(--dock-shadow);
+  border: 1px solid var(--surface-border);
+  backdrop-filter: blur(28px) saturate(1.35);
+  -webkit-backdrop-filter: blur(28px) saturate(1.35);
+}
+
+.dock {
   display: grid;
   grid-template-columns: repeat(5, 1fr);
   gap: 10px;
   padding: 12px 12px 14px;
-  border-radius: 30px;
-  background: var(--dock-bg);
-  box-shadow: var(--dock-shadow);
 }
 
-.dock::after {
+.dock-shell::after {
   content: "";
   position: absolute;
   inset: 1px;
@@ -477,7 +505,7 @@ body.liquid-gl-enabled .tab-badge {
   pointer-events: none;
 }
 
-body.liquid-gl-enabled .dock::after {
+body.liquid-gl-enabled .dock-shell::after {
   display: none;
 }
 
