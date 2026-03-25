@@ -45,7 +45,6 @@ const wallpaperMeta = document.getElementById("wallpaper-meta");
 const recentList = document.getElementById("recent-list");
 const recentEmpty = document.getElementById("recent-empty");
 const recentClear = document.getElementById("recent-clear");
-const cropperBackdrop = document.getElementById("cropper-backdrop");
 const cropper = document.getElementById("cropper");
 const cropperFrame = document.getElementById("cropper-frame");
 const cropperSurface = document.getElementById("cropper-surface");
@@ -395,12 +394,22 @@ function submitSearch(rawValue) {
 }
 
 function closeSheets() {
+  if (!cropper.hidden) {
+    closeCropper();
+    setWallpaperMessage("");
+  }
+
   tabsSheet.hidden = true;
   settingsSheet.hidden = true;
   sheetBackdrop.hidden = true;
 }
 
 function openSheet(sheet) {
+  if (sheet !== settingsSheet && !cropper.hidden) {
+    closeCropper();
+    setWallpaperMessage("");
+  }
+
   tabsSheet.hidden = true;
   settingsSheet.hidden = true;
   sheet.hidden = false;
@@ -434,7 +443,6 @@ function closeCropper() {
 
   cropState = null;
   cropper.hidden = true;
-  cropperBackdrop.hidden = true;
   cropperImage.removeAttribute("src");
   cropperImage.style.width = "";
   cropperImage.style.height = "";
@@ -519,7 +527,7 @@ async function openCropper(file) {
 
   setWallpaperBusy(true);
   setWallpaperMessage("正在准备裁切...");
-  closeSheets();
+  openSheet(settingsSheet);
 
   try {
     const image = await loadImage(objectUrl);
@@ -543,11 +551,11 @@ async function openCropper(file) {
     cropperZoom.value = "1";
     cropperImage.src = objectUrl;
     cropper.hidden = false;
-    cropperBackdrop.hidden = false;
 
     requestAnimationFrame(() => {
       requestAnimationFrame(() => {
         syncCropLayout();
+        cropper.scrollIntoView({ block: "nearest", behavior: "smooth" });
       });
     });
 
@@ -769,11 +777,6 @@ cropperCancel.addEventListener("click", () => {
   setWallpaperMessage("");
 });
 
-cropperBackdrop.addEventListener("click", () => {
-  closeCropper();
-  setWallpaperMessage("");
-});
-
 cropperZoom.addEventListener("input", () => {
   if (!cropState) {
     return;
@@ -954,6 +957,7 @@ tabBadge.textContent = String(document.querySelectorAll(".quick-card").length).p
 state.recent = parseRecentEntries(localStorage.getItem(STORAGE_KEYS.recent));
 
 handleViewportResize();
+closeCropper();
 applyState();
 renderRecentEntries();
 

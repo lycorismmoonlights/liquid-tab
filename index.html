@@ -147,8 +147,6 @@
   </div>
 
   <div class="sheet-backdrop" id="sheet-backdrop" hidden></div>
-  <div class="cropper-backdrop" id="cropper-backdrop" hidden></div>
-
   <section class="sheet" id="tabs-sheet" aria-labelledby="tabs-title" hidden>
     <div class="sheet__header">
       <p class="sheet__eyebrow">Quick Deck</p>
@@ -186,6 +184,32 @@
       </div>
       <p class="setting-hint" id="wallpaper-meta">当前使用默认壁纸。上传的图片只保存在这台设备的浏览器里。</p>
       <input class="sr-only" id="wallpaper-input" type="file" accept="image/*">
+      <section class="cropper" id="cropper" aria-labelledby="cropper-title" hidden>
+        <div class="cropper__header">
+          <p class="cropper__eyebrow">Wallpaper Crop</p>
+          <h2 class="cropper__title" id="cropper-title">裁切壁纸</h2>
+          <p class="cropper__copy">只有上传图片时才会出现。框选比例暂时按 iPhone 15 Pro 竖屏参考，拖动图片调整位置，再用下面的滑块缩放。</p>
+        </div>
+
+        <div class="cropper__stage">
+          <div class="cropper__phone" id="cropper-frame">
+            <div class="cropper__surface" id="cropper-surface">
+              <img class="cropper__image" id="cropper-image" alt="">
+            </div>
+            <div class="cropper__outline" aria-hidden="true"></div>
+          </div>
+        </div>
+
+        <label class="cropper__zoom" for="cropper-zoom">
+          <span>缩放</span>
+          <input id="cropper-zoom" type="range" min="1" max="3" step="0.01" value="1">
+        </label>
+
+        <div class="cropper__actions">
+          <button class="segment" id="cropper-cancel" type="button">取消</button>
+          <button class="segment is-active" id="cropper-apply" type="button">使用这张壁纸</button>
+        </div>
+      </section>
     </div>
 
     <div class="setting-group">
@@ -209,34 +233,6 @@
 
     <p class="sheet-note">iPhone 上想更像独立标签页：Safari 打开后点“分享”，再选“添加到主屏幕”。自定义壁纸只保存在当前浏览器，不会同步到别的设备。</p>
   </section>
-
-  <section class="cropper" id="cropper" aria-labelledby="cropper-title" hidden>
-    <div class="cropper__header">
-      <p class="cropper__eyebrow">Wallpaper Crop</p>
-      <h2 class="cropper__title" id="cropper-title">裁切壁纸</h2>
-      <p class="cropper__copy">框选比例暂时按 iPhone 15 Pro 竖屏参考。拖动图片调整位置，再用下面的滑块缩放。</p>
-    </div>
-
-    <div class="cropper__stage">
-      <div class="cropper__phone" id="cropper-frame">
-        <div class="cropper__surface" id="cropper-surface">
-          <img class="cropper__image" id="cropper-image" alt="">
-        </div>
-        <div class="cropper__outline" aria-hidden="true"></div>
-      </div>
-    </div>
-
-    <label class="cropper__zoom" for="cropper-zoom">
-      <span>缩放</span>
-      <input id="cropper-zoom" type="range" min="1" max="3" step="0.01" value="1">
-    </label>
-
-    <div class="cropper__actions">
-      <button class="segment" id="cropper-cancel" type="button">取消</button>
-      <button class="segment is-active" id="cropper-apply" type="button">使用这张壁纸</button>
-    </div>
-  </section>
-
   <script src="vendor/html2canvas.min.js"></script>
   <script src="vendor/liquidGL.js"></script>
   <script src="script.js"></script>

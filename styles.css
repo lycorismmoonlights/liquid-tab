@@ -703,30 +703,15 @@ body.liquid-gl-enabled .dock-shell::after {
   -webkit-backdrop-filter: blur(12px);
 }
 
-.cropper-backdrop {
-  position: fixed;
-  inset: 0;
-  z-index: 30;
-  background: rgba(5, 8, 16, 0.68);
-  backdrop-filter: blur(22px);
-  -webkit-backdrop-filter: blur(22px);
-}
-
 .cropper {
-  position: fixed;
-  left: 14px;
-  right: 14px;
-  top: max(20px, env(safe-area-inset-top));
-  bottom: max(20px, env(safe-area-inset-bottom));
-  z-index: 31;
+  margin-top: 16px;
   display: grid;
-  grid-template-rows: auto 1fr auto auto;
   gap: 18px;
-  padding: 22px;
-  border-radius: 32px;
-  background: linear-gradient(180deg, rgba(22, 31, 47, 0.92), rgba(11, 17, 29, 0.94));
+  padding: 18px;
+  border-radius: 24px;
+  background: linear-gradient(180deg, rgba(26, 35, 50, 0.78), rgba(15, 22, 34, 0.82));
   border: 1px solid rgba(255, 255, 255, 0.12);
-  box-shadow: 0 28px 70px rgba(0, 0, 0, 0.34);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
 }
 
 .cropper__header {
@@ -758,13 +743,11 @@ body.liquid-gl-enabled .dock-shell::after {
 .cropper__stage {
   display: grid;
   place-items: center;
-  min-height: 0;
 }
 
 .cropper__phone {
   position: relative;
-  width: min(72vw, 320px);
-  max-height: 100%;
+  width: min(100%, 280px);
   aspect-ratio: 393 / 852;
   border-radius: 34px;
   overflow: hidden;
@@ -846,6 +829,9 @@ body.liquid-gl-enabled .dock-shell::after {
   box-shadow: 0 24px 56px rgba(0, 0, 0, 0.28);
   backdrop-filter: blur(30px);
   -webkit-backdrop-filter: blur(30px);
+  max-height: calc(var(--viewport-height) - 140px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
 }
 
 .sheet__header {
@@ -1056,12 +1042,12 @@ body.liquid-gl-enabled .dock-shell::after {
   }
 
   .cropper {
-    padding: 18px;
+    padding: 16px;
     gap: 16px;
   }
 
   .cropper__phone {
-    width: min(78vw, 320px);
+    width: min(100%, 260px);
   }
 }
 
