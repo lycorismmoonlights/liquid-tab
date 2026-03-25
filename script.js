@@ -380,15 +380,15 @@ function getTrueGlassControls() {
   }
 
   return {
-    blurRadius: isTransparent ? 7.8 : 9.4,
-    edgeIntensity: isTransparent ? 0.016 : 0.02,
-    rimIntensity: isTransparent ? 0.08 : 0.105,
-    baseIntensity: isTransparent ? 0.006 : 0.008,
-    edgeDistance: 0.12,
-    rimDistance: 0.82,
-    baseDistance: 0.12,
-    cornerBoost: isTransparent ? 0.018 : 0.026,
-    rippleEffect: isTransparent ? 0.03 : 0.05
+    blurRadius: isTransparent ? 6.6 : 7.8,
+    edgeIntensity: isTransparent ? 0.011 : 0.014,
+    rimIntensity: isTransparent ? 0.054 : 0.072,
+    baseIntensity: isTransparent ? 0.0035 : 0.0048,
+    edgeDistance: 0.13,
+    rimDistance: 0.88,
+    baseDistance: 0.1,
+    cornerBoost: isTransparent ? 0.014 : 0.02,
+    rippleEffect: isTransparent ? 0.018 : 0.028
   };
 }
 
@@ -405,10 +405,10 @@ function getTrueGlassTintOpacity(role = "secondary") {
   }
 
   if (role === "primary") {
-    return isTransparent ? 0.12 : 0.18;
+    return isTransparent ? 0.055 : 0.08;
   }
 
-  return isTransparent ? 0.09 : 0.14;
+  return isTransparent ? 0.038 : 0.055;
 }
 
 function getTrueGlassTypeForElement(element) {

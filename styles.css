@@ -81,13 +81,13 @@ body[data-theme="night"] {
   --chip-active-border: rgba(220, 230, 250, 0.28);
   --backdrop-saturate: 1.12;
   --glass-tint: rgba(10, 16, 28, 0.78);
-  --glass-overlay: linear-gradient(180deg, rgba(216, 228, 252, 0.18), rgba(255, 255, 255, 0.05) 38%, rgba(171, 194, 244, 0.024) 70%, rgba(255, 255, 255, 0.035));
-  --glass-overlay-border: rgba(204, 218, 246, 0.14);
-  --glass-edge-shine: radial-gradient(130% 76% at 50% -14%, rgba(223, 233, 255, 0.34), transparent 46%), linear-gradient(180deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0) 34%, rgba(26, 37, 62, 0.16) 100%);
+  --glass-overlay: linear-gradient(180deg, rgba(216, 228, 252, 0.09), rgba(255, 255, 255, 0.022) 38%, rgba(171, 194, 244, 0.014) 70%, rgba(255, 255, 255, 0.018));
+  --glass-overlay-border: rgba(204, 218, 246, 0.12);
+  --glass-edge-shine: radial-gradient(130% 76% at 50% -14%, rgba(223, 233, 255, 0.22), transparent 46%), linear-gradient(180deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0) 34%, rgba(26, 37, 62, 0.12) 100%);
   --glass-shadow: 0 26px 58px rgba(0, 4, 14, 0.28);
   --glass-button-fill: rgba(201, 216, 247, 0.08);
   --glass-button-border: rgba(206, 221, 248, 0.12);
-  --glass-readable-bg: linear-gradient(180deg, rgba(16, 23, 36, 0.52), rgba(8, 13, 23, 0.46));
+  --glass-readable-bg: linear-gradient(180deg, rgba(10, 16, 28, 0.2), rgba(5, 10, 19, 0.15));
   --sheet-bg: linear-gradient(180deg, rgba(17, 24, 39, 0.86), rgba(9, 14, 25, 0.92));
   --eyebrow-color: rgba(196, 208, 232, 0.66);
   --recent-eyebrow-color: rgba(169, 183, 212, 0.52);
@@ -104,13 +104,13 @@ body[data-theme="night"][data-style="transparent"] {
   --chip-active-border: rgba(220, 230, 250, 0.18);
   --backdrop-saturate: 1.02;
   --glass-tint: rgba(8, 13, 23, 0.56);
-  --glass-overlay: linear-gradient(180deg, rgba(216, 228, 252, 0.11), rgba(255, 255, 255, 0.026) 46%, rgba(171, 194, 244, 0.018));
+  --glass-overlay: linear-gradient(180deg, rgba(216, 228, 252, 0.07), rgba(255, 255, 255, 0.018) 46%, rgba(171, 194, 244, 0.012));
   --glass-overlay-border: rgba(204, 218, 246, 0.08);
-  --glass-edge-shine: radial-gradient(130% 76% at 50% -14%, rgba(223, 233, 255, 0.24), transparent 44%), linear-gradient(180deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0) 34%, rgba(26, 37, 62, 0.12) 100%);
+  --glass-edge-shine: radial-gradient(130% 76% at 50% -14%, rgba(223, 233, 255, 0.18), transparent 44%), linear-gradient(180deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0) 34%, rgba(26, 37, 62, 0.1) 100%);
   --glass-shadow: 0 20px 44px rgba(0, 4, 14, 0.2);
   --glass-button-fill: rgba(201, 216, 247, 0.04);
   --glass-button-border: rgba(206, 221, 248, 0.07);
-  --glass-readable-bg: linear-gradient(180deg, rgba(13, 19, 30, 0.4), rgba(7, 11, 20, 0.34));
+  --glass-readable-bg: linear-gradient(180deg, rgba(10, 15, 24, 0.15), rgba(5, 9, 17, 0.11));
 }
 
 body[data-theme="day"] {
@@ -556,6 +556,16 @@ body.true-glass-enabled .dock-shell {
 body[data-theme="night"].true-glass-enabled .search-shell,
 body[data-theme="night"].true-glass-enabled .dock-shell {
   background: var(--glass-readable-bg);
+}
+
+body[data-theme="night"].true-glass-enabled .search-shell::before,
+body[data-theme="night"].true-glass-enabled .dock-shell::before {
+  background: linear-gradient(180deg, rgba(214, 226, 252, 0.06), rgba(255, 255, 255, 0.014) 42%, rgba(171, 194, 244, 0.01) 76%, rgba(255, 255, 255, 0.006));
+}
+
+body[data-theme="night"].true-glass-enabled .search-shell::after,
+body[data-theme="night"].true-glass-enabled .dock-shell::after {
+  opacity: 0.5;
 }
 
 body.true-glass-enabled .glass-shell--liquid::before {
