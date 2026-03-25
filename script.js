@@ -54,7 +54,7 @@ function getLiquidPreset() {
       bevelDepth: 0.035,
       bevelWidth: 0.12,
       frost: 0.6,
-      shadow: true,
+      shadow: false,
       specular: false,
       magnify: 1
     };
@@ -65,7 +65,7 @@ function getLiquidPreset() {
     bevelDepth: 0.052,
     bevelWidth: 0.211,
     frost: 2,
-    shadow: true,
+    shadow: false,
     specular: !state.reduceMotion,
     magnify: 1.01
   };

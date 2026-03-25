@@ -283,9 +283,11 @@ input {
 }
 
 body.liquid-gl-enabled .glass-shell {
-  background: rgba(255, 255, 255, 0.045);
+  background: transparent;
   border-color: rgba(255, 255, 255, 0.2);
-  box-shadow: 0 22px 48px rgba(11, 16, 28, 0.18);
+  box-shadow: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
 }
 
 body.liquid-gl-enabled .glass-shell::before {
@@ -297,9 +299,9 @@ body.liquid-gl-enabled .glass-shell::before {
 }
 
 body[data-style="transparent"].liquid-gl-enabled .glass-shell {
-  background: rgba(255, 255, 255, 0.018);
+  background: transparent;
   border-color: rgba(255, 255, 255, 0.12);
-  box-shadow: 0 16px 34px rgba(11, 16, 28, 0.12);
+  box-shadow: none;
 }
 
 body[data-style="transparent"].liquid-gl-enabled .glass-shell::before {
