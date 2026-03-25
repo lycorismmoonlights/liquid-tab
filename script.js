@@ -25,6 +25,8 @@ const settingsSheet = document.getElementById("settings-sheet");
 const sheetBackdrop = document.getElementById("sheet-backdrop");
 const motionToggle = document.getElementById("motion-toggle");
 const tabBadge = document.getElementById("tab-badge");
+let liquidLenses = [];
+let liquidGlassReady = false;
 
 function applyState() {
   body.dataset.style = state.style;
@@ -42,6 +44,78 @@ function applyState() {
   localStorage.setItem(STORAGE_KEYS.style, state.style);
   localStorage.setItem(STORAGE_KEYS.engine, state.engine);
   localStorage.setItem(STORAGE_KEYS.reduceMotion, String(state.reduceMotion));
+  syncLiquidGlass();
+}
+
+function getLiquidPreset() {
+  if (state.style === "transparent") {
+    return {
+      refraction: 0,
+      bevelDepth: 0.035,
+      bevelWidth: 0.12,
+      frost: 0.6,
+      shadow: true,
+      specular: false,
+      magnify: 1
+    };
+  }
+
+  return {
+    refraction: 0,
+    bevelDepth: 0.052,
+    bevelWidth: 0.211,
+    frost: 2,
+    shadow: true,
+    specular: !state.reduceMotion,
+    magnify: 1.01
+  };
+}
+
+function syncLiquidGlass() {
+  if (!liquidLenses.length) {
+    return;
+  }
+
+  const preset = getLiquidPreset();
+  liquidLenses.forEach((lens) => {
+    if (!lens || !lens.options) {
+      return;
+    }
+
+    Object.assign(lens.options, preset);
+
+    if (typeof lens.setShadow === "function") {
+      lens.setShadow(preset.shadow);
+    }
+  });
+}
+
+function initLiquidGlass() {
+  if (liquidGlassReady || typeof window.liquidGL !== "function" || typeof window.html2canvas !== "function") {
+    return;
+  }
+
+  try {
+    const effect = window.liquidGL({
+      snapshot: "body",
+      target: ".liquid-lens",
+      resolution: 1.5,
+      tilt: false,
+      reveal: state.reduceMotion ? "none" : "fade",
+      ...getLiquidPreset(),
+      on: {
+        init() {
+          body.classList.add("liquid-gl-enabled");
+        }
+      }
+    });
+
+    liquidLenses = Array.isArray(effect) ? effect.filter(Boolean) : [effect].filter(Boolean);
+    liquidGlassReady = liquidLenses.length > 0;
+    syncLiquidGlass();
+  } catch (error) {
+    console.warn("liquidGL init failed, falling back to CSS glass.", error);
+  }
 }
 
 function looksLikeUrl(value) {
@@ -133,3 +207,9 @@ document.addEventListener("keydown", (event) => {
 tabBadge.textContent = String(document.querySelectorAll(".quick-card").length).padStart(2, "0");
 
 applyState();
+
+if (document.readyState === "complete") {
+  initLiquidGlass();
+} else {
+  window.addEventListener("load", initLiquidGlass, { once: true });
+}

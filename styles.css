@@ -43,6 +43,7 @@ body {
 }
 
 body {
+  position: relative;
   margin: 0;
   min-height: 100svh;
   overflow-x: hidden;
@@ -90,8 +91,9 @@ input {
 }
 
 .scene {
-  position: fixed;
+  position: absolute;
   inset: 0;
+  min-height: 100%;
   overflow: hidden;
   pointer-events: none;
 }
@@ -245,6 +247,19 @@ input {
   -webkit-backdrop-filter: blur(28px) saturate(1.35);
 }
 
+.liquid-lens {
+  position: relative;
+  z-index: 2;
+  overflow: clip;
+  isolation: isolate;
+  transform: translateZ(0);
+}
+
+.liquid-lens > * {
+  position: relative;
+  z-index: 3;
+}
+
 .surface::before {
   content: "";
   position: absolute;
@@ -258,6 +273,34 @@ input {
   background: linear-gradient(180deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.03));
   border-color: rgba(255, 255, 255, 0.12);
   box-shadow: none;
+}
+
+body.liquid-gl-enabled .liquid-lens {
+  background: rgba(255, 255, 255, 0.045);
+  border-color: rgba(255, 255, 255, 0.2);
+  box-shadow: 0 22px 48px rgba(11, 16, 28, 0.18);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+body.liquid-gl-enabled .liquid-lens::before {
+  inset: 0;
+  border-radius: inherit;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.22), rgba(255, 255, 255, 0.04) 42%, rgba(255, 255, 255, 0.1));
+}
+
+body[data-style="transparent"].liquid-gl-enabled .liquid-lens {
+  background: rgba(255, 255, 255, 0.018);
+  border-color: rgba(255, 255, 255, 0.12);
+  box-shadow: 0 16px 34px rgba(11, 16, 28, 0.12);
+}
+
+body[data-style="transparent"].liquid-gl-enabled .liquid-lens::before {
+  border-color: rgba(255, 255, 255, 0.12);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.12), rgba(255, 255, 255, 0.01) 46%, rgba(255, 255, 255, 0.05));
 }
 
 .search-panel {
@@ -331,6 +374,15 @@ input {
 
 .icon-button--filled {
   background: linear-gradient(180deg, rgba(255, 255, 255, 0.24), rgba(255, 255, 255, 0.1));
+}
+
+body.liquid-gl-enabled .icon-button,
+body.liquid-gl-enabled .quick-card__icon,
+body.liquid-gl-enabled .dock-button--primary,
+body.liquid-gl-enabled .tab-badge {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
 }
 
 .icon-button svg,
@@ -423,6 +475,10 @@ input {
   border: 1px solid var(--surface-stroke);
   mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0.84), transparent 80%);
   pointer-events: none;
+}
+
+body.liquid-gl-enabled .dock::after {
+  display: none;
 }
 
 .dock-button {

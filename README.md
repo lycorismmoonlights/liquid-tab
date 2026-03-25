@@ -9,6 +9,18 @@
 - [`script.js`](/Volumes/HP P900/goole_ui_pro/script.js)
 - [`manifest.webmanifest`](/Volumes/HP P900/goole_ui_pro/manifest.webmanifest)
 
+## 现成液态玻璃实现
+
+这版已经改为使用现成开源库：
+
+- `liquidGL` by NaughtyDuk, MIT
+- `html2canvas` by Niklas von Hertzen, MIT
+
+本地文件：
+
+- [`vendor/liquidGL.js`](/Volumes/HP P900/goole_ui_pro/vendor/liquidGL.js)
+- [`vendor/html2canvas.min.js`](/Volumes/HP P900/goole_ui_pro/vendor/html2canvas.min.js)
+
 ## 用法
 
 1. 直接在浏览器打开 [`index.html`](/Volumes/HP P900/goole_ui_pro/index.html)。

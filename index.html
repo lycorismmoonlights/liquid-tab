@@ -32,7 +32,7 @@
         <p class="subtitle">把白边藏起来，让底部像漂浮在壁纸上。</p>
       </div>
 
-      <form class="search-panel surface reveal delay-1" id="search-form">
+      <form class="search-panel surface liquid-lens reveal delay-1" id="search-form">
         <div class="search-mark" aria-hidden="true">
           <span class="search-mark__g">G</span>
         </div>
@@ -68,26 +68,26 @@
       </div>
 
       <section class="quick-grid reveal delay-3" aria-label="快捷入口">
-        <a class="quick-card surface" href="https://www.google.com" rel="noreferrer">
+        <a class="quick-card surface liquid-lens" href="https://www.google.com" rel="noreferrer">
           <span class="quick-card__icon">G</span>
           <span class="quick-card__label">Google</span>
         </a>
-        <a class="quick-card surface" href="https://www.youtube.com" rel="noreferrer">
+        <a class="quick-card surface liquid-lens" href="https://www.youtube.com" rel="noreferrer">
           <span class="quick-card__icon">Y</span>
           <span class="quick-card__label">YouTube</span>
         </a>
-        <a class="quick-card surface" href="https://www.github.com" rel="noreferrer">
+        <a class="quick-card surface liquid-lens" href="https://www.github.com" rel="noreferrer">
           <span class="quick-card__icon">GH</span>
           <span class="quick-card__label">GitHub</span>
         </a>
-        <a class="quick-card surface" href="https://www.notion.so" rel="noreferrer">
+        <a class="quick-card surface liquid-lens" href="https://www.notion.so" rel="noreferrer">
           <span class="quick-card__icon">N</span>
           <span class="quick-card__label">Notion</span>
         </a>
       </section>
     </main>
 
-    <nav class="dock surface reveal delay-4" aria-label="底部操作">
+    <nav class="dock surface liquid-lens reveal delay-4" aria-label="底部操作">
       <button class="dock-button" id="nav-back" type="button" aria-label="后退">
         <svg viewBox="0 0 24 24" aria-hidden="true">
           <path d="M14.5 5.5L8 12l6.5 6.5"/>
@@ -167,6 +167,8 @@
     <p class="sheet-note">iPhone 上想更像独立标签页：Safari 打开后点“分享”，再选“添加到主屏幕”。</p>
   </section>
 
+  <script src="vendor/html2canvas.min.js"></script>
+  <script src="vendor/liquidGL.js"></script>
   <script src="script.js"></script>
 </body>
 </html>
