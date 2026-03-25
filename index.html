@@ -82,9 +82,7 @@
         </div>
       </form>
 
-      <section class="widget-deck reveal delay-2" id="widget-deck" aria-label="开关小组件" hidden></section>
-
-      <section class="quick-grid reveal delay-3" aria-label="快捷入口">
+      <section class="quick-grid reveal delay-2" aria-label="快捷入口">
         <a class="quick-card glass-shell" href="https://www.google.com" rel="noreferrer" data-recent-link data-recent-title="Google">
           <div class="liquid-lens liquid-lens--card" aria-hidden="true"></div>
           <span class="quick-card__content glass-content" data-liquid-ignore>
@@ -115,7 +113,7 @@
         </a>
       </section>
 
-      <section class="recent-shell glass-shell reveal delay-4" id="recent-shell" aria-labelledby="recent-title">
+      <section class="recent-shell glass-shell reveal delay-3" id="recent-shell" aria-labelledby="recent-title">
         <div class="liquid-lens liquid-lens--recent" aria-hidden="true"></div>
         <div class="recent-panel glass-content" data-liquid-ignore>
           <div class="recent-header">
@@ -210,16 +208,12 @@
     </div>
 
     <div class="setting-group">
-      <p class="setting-label">自定义开关小组件</p>
+      <p class="setting-label">首页组件</p>
       <div class="widget-picker" id="widget-picker">
-        <button class="widget-option segment" data-widget-choice="night_mode" type="button">夜晚模式</button>
-        <button class="widget-option segment" data-widget-choice="liquid_glass" type="button">液态玻璃</button>
-        <button class="widget-option segment" data-widget-choice="reduce_motion" type="button">降低动态</button>
-        <button class="widget-option segment" data-widget-choice="recent_panel" type="button">最近浏览</button>
-        <button class="widget-option segment" data-widget-choice="quick_links" type="button">快捷入口</button>
-        <button class="widget-option segment" data-widget-choice="chrome_mode" type="button">Chrome 模式</button>
+        <button class="widget-option segment" data-component-choice="quick_links" type="button">快捷入口</button>
+        <button class="widget-option segment" data-component-choice="recent_panel" type="button">最近浏览</button>
       </div>
-      <p class="setting-hint">点一下决定首页显示哪些小开关。显示后可以直接在首页切换对应功能。</p>
+      <p class="setting-hint">这些开关只放在菜单里，用来控制首页板块的显示和隐藏。</p>
     </div>
 
     <div class="setting-group">

@@ -6,7 +6,6 @@ const STORAGE_KEYS = {
   reduceMotion: "liquid-tab-reduce-motion",
   showRecent: "liquid-tab-show-recent",
   showQuickLinks: "liquid-tab-show-quick-links",
-  widgetSelection: "liquid-tab-widget-selection",
   wallpaper: "liquid-tab-wallpaper",
   recent: "liquid-tab-recent"
 };
@@ -24,45 +23,6 @@ const IPHONE_15_PRO_WALLPAPER = {
 };
 const MAX_WALLPAPER_LENGTH = 1800000;
 const MAX_RECENT_ITEMS = 4;
-const DEFAULT_WIDGET_SELECTION = ["night_mode", "liquid_glass", "reduce_motion", "recent_panel"];
-const WIDGET_DEFINITIONS = {
-  night_mode: {
-    label: "夜晚模式",
-    detail: "日 / 夜",
-    onLabel: "夜间",
-    offLabel: "日间"
-  },
-  liquid_glass: {
-    label: "液态玻璃",
-    detail: "液态 / 透明",
-    onLabel: "液态",
-    offLabel: "透明"
-  },
-  reduce_motion: {
-    label: "降低动态",
-    detail: "动态 / 静态",
-    onLabel: "静态",
-    offLabel: "动态"
-  },
-  recent_panel: {
-    label: "最近浏览",
-    detail: "显示 / 隐藏",
-    onLabel: "显示",
-    offLabel: "隐藏"
-  },
-  quick_links: {
-    label: "快捷入口",
-    detail: "显示 / 隐藏",
-    onLabel: "显示",
-    offLabel: "隐藏"
-  },
-  chrome_mode: {
-    label: "Chrome 模式",
-    detail: "默认 / Chrome",
-    onLabel: "Chrome",
-    offLabel: "默认"
-  }
-};
 
 function detectBrowserMode() {
   const ua = navigator.userAgent || "";
@@ -79,7 +39,6 @@ const state = {
   reduceMotion: localStorage.getItem(STORAGE_KEYS.reduceMotion) === "true",
   showRecent: localStorage.getItem(STORAGE_KEYS.showRecent) !== "false",
   showQuickLinks: localStorage.getItem(STORAGE_KEYS.showQuickLinks) !== "false",
-  widgets: [],
   wallpaper: localStorage.getItem(STORAGE_KEYS.wallpaper) || "",
   recent: []
 };
@@ -88,7 +47,6 @@ const body = document.body;
 const searchForm = document.getElementById("search-form");
 const searchInput = document.getElementById("search-input");
 const pasteButton = document.getElementById("paste-button");
-const widgetDeck = document.getElementById("widget-deck");
 const widgetPicker = document.getElementById("widget-picker");
 const quickGrid = document.querySelector(".quick-grid");
 const recentShell = document.getElementById("recent-shell");
@@ -120,29 +78,6 @@ let liquidSnapshotFrame = 0;
 let wallpaperBusy = false;
 let wallpaperMessage = "";
 let cropState = null;
-
-function parseWidgetSelection(rawValue) {
-  if (!rawValue) {
-    return [...DEFAULT_WIDGET_SELECTION];
-  }
-
-  try {
-    const parsed = JSON.parse(rawValue);
-    if (!Array.isArray(parsed)) {
-      return [...DEFAULT_WIDGET_SELECTION];
-    }
-
-    const deduped = parsed.filter((widgetId, index) => (
-      typeof widgetId === "string"
-      && widgetId in WIDGET_DEFINITIONS
-      && parsed.indexOf(widgetId) === index
-    ));
-
-    return deduped.length ? deduped : [...DEFAULT_WIDGET_SELECTION];
-  } catch (error) {
-    return [...DEFAULT_WIDGET_SELECTION];
-  }
-}
 
 function parseRecentEntries(rawValue) {
   if (!rawValue) {
@@ -194,131 +129,26 @@ function formatRecentMeta(entry) {
   return entry.meta || getHostLabel(entry.url);
 }
 
-function isWidgetEnabled(widgetId) {
-  switch (widgetId) {
-    case "night_mode":
-      return resolveTheme() === "night";
-    case "liquid_glass":
-      return state.style === "liquid";
-    case "reduce_motion":
-      return state.reduceMotion;
-    case "recent_panel":
-      return state.showRecent;
-    case "quick_links":
-      return state.showQuickLinks;
-    case "chrome_mode":
-      return state.browserMode === "chrome";
-    default:
-      return false;
-  }
-}
-
-function renderWidgetDeck() {
-  if (!widgetDeck) {
-    return;
-  }
-
-  widgetDeck.textContent = "";
-
-  if (!state.widgets.length) {
-    widgetDeck.hidden = true;
-    return;
-  }
-
-  state.widgets.forEach((widgetId) => {
-    const definition = WIDGET_DEFINITIONS[widgetId];
-    if (!definition) {
-      return;
-    }
-
-    const isEnabled = isWidgetEnabled(widgetId);
-    const button = document.createElement("button");
-    button.type = "button";
-    button.className = `widget-card glass-shell ${isEnabled ? "is-on" : "is-off"}`;
-    button.dataset.widgetToggle = widgetId;
-    button.setAttribute("aria-pressed", String(isEnabled));
-    button.setAttribute("aria-label", `${definition.label}，当前${isEnabled ? definition.onLabel : definition.offLabel}`);
-
-    button.innerHTML = `
-      <div class="liquid-lens liquid-lens--widget" aria-hidden="true"></div>
-      <span class="widget-card__content glass-content" data-liquid-ignore>
-        <span class="widget-card__copy">
-          <span class="widget-card__detail">${definition.detail}</span>
-          <span class="widget-card__label">${definition.label}</span>
-        </span>
-        <span class="widget-card__status">
-          <span class="widget-card__state">${isEnabled ? definition.onLabel : definition.offLabel}</span>
-          <span class="widget-card__switch" aria-hidden="true"></span>
-        </span>
-      </span>
-    `;
-
-    widgetDeck.appendChild(button);
-  });
-
-  widgetDeck.hidden = widgetDeck.childElementCount === 0;
-
-  if (liquidGlassReady && typeof window.liquidGL?.syncWith === "function") {
-    window.liquidGL.syncWith();
-  }
-}
-
-function syncWidgetPicker() {
+function syncComponentPicker() {
   if (!widgetPicker) {
     return;
   }
 
-  widgetPicker.querySelectorAll("[data-widget-choice]").forEach((button) => {
-    const isSelected = state.widgets.includes(button.dataset.widgetChoice);
-    button.classList.toggle("is-active", isSelected);
-    button.setAttribute("aria-pressed", String(isSelected));
+  widgetPicker.querySelectorAll("[data-component-choice]").forEach((button) => {
+    const choice = button.dataset.componentChoice;
+    const isEnabled = choice === "quick_links" ? state.showQuickLinks : state.showRecent;
+    button.classList.toggle("is-active", isEnabled);
+    button.setAttribute("aria-pressed", String(isEnabled));
   });
 }
 
-function toggleWidgetSelection(widgetId) {
-  if (!(widgetId in WIDGET_DEFINITIONS)) {
-    return;
-  }
-
-  if (state.widgets.includes(widgetId)) {
-    state.widgets = state.widgets.filter((entry) => entry !== widgetId);
-
-    if (widgetId === "recent_panel" && !state.showRecent) {
-      state.showRecent = true;
-    }
-
-    if (widgetId === "quick_links" && !state.showQuickLinks) {
-      state.showQuickLinks = true;
-    }
+function toggleComponentVisibility(componentId) {
+  if (componentId === "quick_links") {
+    state.showQuickLinks = !state.showQuickLinks;
+  } else if (componentId === "recent_panel") {
+    state.showRecent = !state.showRecent;
   } else {
-    state.widgets = [...state.widgets, widgetId];
-  }
-
-  applyState();
-}
-
-function toggleWidget(widgetId) {
-  switch (widgetId) {
-    case "night_mode":
-      state.themeMode = resolveTheme() === "night" ? "day" : "night";
-      break;
-    case "liquid_glass":
-      state.style = state.style === "liquid" ? "transparent" : "liquid";
-      break;
-    case "reduce_motion":
-      state.reduceMotion = !state.reduceMotion;
-      break;
-    case "recent_panel":
-      state.showRecent = !state.showRecent;
-      break;
-    case "quick_links":
-      state.showQuickLinks = !state.showQuickLinks;
-      break;
-    case "chrome_mode":
-      state.browserMode = state.browserMode === "chrome" ? "default" : "chrome";
-      break;
-    default:
-      return;
+    return;
   }
 
   applyState();
@@ -486,8 +316,7 @@ function applyState() {
     button.classList.toggle("is-active", button.dataset.engineChoice === state.engine);
   });
 
-  syncWidgetPicker();
-  renderWidgetDeck();
+  syncComponentPicker();
 
   localStorage.setItem(STORAGE_KEYS.themeMode, state.themeMode);
   localStorage.setItem(STORAGE_KEYS.browserMode, state.browserMode);
@@ -496,7 +325,6 @@ function applyState() {
   localStorage.setItem(STORAGE_KEYS.reduceMotion, String(state.reduceMotion));
   localStorage.setItem(STORAGE_KEYS.showRecent, String(state.showRecent));
   localStorage.setItem(STORAGE_KEYS.showQuickLinks, String(state.showQuickLinks));
-  localStorage.setItem(STORAGE_KEYS.widgetSelection, JSON.stringify(state.widgets));
   syncThemeColor();
   syncWallpaperControls();
   syncLiquidGlass();
@@ -996,23 +824,12 @@ document.querySelectorAll("[data-engine-choice]").forEach((button) => {
 
 if (widgetPicker) {
   widgetPicker.addEventListener("click", (event) => {
-    const button = event.target.closest("[data-widget-choice]");
+    const button = event.target.closest("[data-component-choice]");
     if (!button) {
       return;
     }
 
-    toggleWidgetSelection(button.dataset.widgetChoice);
-  });
-}
-
-if (widgetDeck) {
-  widgetDeck.addEventListener("click", (event) => {
-    const button = event.target.closest("[data-widget-toggle]");
-    if (!button) {
-      return;
-    }
-
-    toggleWidget(button.dataset.widgetToggle);
+    toggleComponentVisibility(button.dataset.componentChoice);
   });
 }
 
@@ -1265,7 +1082,6 @@ if (systemThemeQuery) {
 
 tabBadge.textContent = String(document.querySelectorAll(".quick-card").length).padStart(2, "0");
 state.recent = parseRecentEntries(localStorage.getItem(STORAGE_KEYS.recent));
-state.widgets = parseWidgetSelection(localStorage.getItem(STORAGE_KEYS.widgetSelection));
 
 handleViewportResize();
 closeCropper();
