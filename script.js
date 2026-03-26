@@ -377,7 +377,7 @@ function getTrueGlassControls() {
 
   if (theme === "day") {
     return {
-      blurRadius: isTransparent ? 7.2 : 8.4,
+      blurRadius: isTransparent ? 6.4 : 7.4,
       edgeIntensity: isTransparent ? 0.012 : 0.015,
       rimIntensity: isTransparent ? 0.055 : 0.075,
       baseIntensity: isTransparent ? 0.004 : 0.006,
@@ -408,10 +408,10 @@ function getTrueGlassTintOpacity(role = "secondary") {
 
   if (theme === "day") {
     if (role === "primary") {
-      return isTransparent ? 0.08 : 0.12;
+      return isTransparent ? 0.12 : 0.17;
     }
 
-    return isTransparent ? 0.06 : 0.1;
+    return isTransparent ? 0.09 : 0.13;
   }
 
   if (role === "primary") {
