@@ -319,7 +319,7 @@ function syncThemeColor() {
     return;
   }
 
-  themeColorMeta.setAttribute("content", body.dataset.theme === "day" ? "#f5f8fc" : "#2c2623");
+  themeColorMeta.setAttribute("content", body.dataset.theme === "day" ? "#f5f8fc" : "#1f1f21");
 }
 
 function applyState() {

@@ -92,13 +92,13 @@ body[data-theme="night"] {
   --eyebrow-color: rgba(196, 208, 232, 0.66);
   --recent-eyebrow-color: rgba(169, 183, 212, 0.52);
   --search-placeholder: rgba(231, 236, 247, 0.78);
-  --night-solid-surface-bg: linear-gradient(180deg, rgba(51, 43, 39, 0.96), rgba(39, 33, 29, 0.94));
-  --night-solid-strong-bg: linear-gradient(180deg, rgba(48, 41, 37, 0.98), rgba(35, 30, 27, 0.96));
-  --night-solid-item-bg: linear-gradient(180deg, rgba(59, 51, 46, 0.94), rgba(44, 38, 34, 0.92));
-  --night-solid-border: rgba(255, 255, 255, 0.08);
-  --night-solid-shadow: 0 14px 28px rgba(0, 0, 0, 0.24);
-  --night-solid-button-bg: rgba(255, 255, 255, 0.06);
-  --night-solid-button-border: rgba(255, 255, 255, 0.08);
+  --night-solid-surface-bg: linear-gradient(180deg, rgba(38, 38, 40, 0.985), rgba(31, 31, 33, 0.975));
+  --night-solid-strong-bg: linear-gradient(180deg, rgba(34, 34, 36, 0.992), rgba(27, 27, 29, 0.985));
+  --night-solid-item-bg: linear-gradient(180deg, rgba(45, 45, 47, 0.97), rgba(36, 36, 38, 0.962));
+  --night-solid-border: rgba(255, 255, 255, 0.06);
+  --night-solid-shadow: 0 14px 28px rgba(0, 0, 0, 0.28);
+  --night-solid-button-bg: rgba(255, 255, 255, 0.08);
+  --night-solid-button-border: rgba(255, 255, 255, 0.06);
 }
 
 body[data-theme="night"][data-style="transparent"] {
