@@ -1,6 +1,14 @@
 :root {
   color-scheme: dark;
   --viewport-height: 100svh;
+  --depth-bg-x: 0px;
+  --depth-bg-y: 0px;
+  --depth-hero-x: 0px;
+  --depth-hero-y: 0px;
+  --depth-panel-x: 0px;
+  --depth-panel-y: 0px;
+  --depth-dock-x: 0px;
+  --depth-dock-y: 0px;
   --font-display: "Avenir Next", "SF Pro Display", "Helvetica Neue", sans-serif;
   --font-body: "Avenir Next", "PingFang SC", "SF Pro Text", sans-serif;
   --text-primary: rgba(255, 255, 255, 0.98);
@@ -260,11 +268,13 @@ input {
   inset: 0;
   z-index: 0;
   opacity: 0;
-  transform: scale(1.02);
+  transform: scale(1.08);
+  translate: var(--depth-bg-x) var(--depth-bg-y);
   background-position: center;
   background-repeat: no-repeat;
   background-size: cover;
-  transition: opacity 220ms ease, transform 320ms ease;
+  transition: opacity 220ms ease, transform 320ms ease, translate 280ms cubic-bezier(0.22, 0.8, 0.2, 1);
+  will-change: transform, translate;
 }
 
 .scene__wallpaper::after {
@@ -281,12 +291,13 @@ input {
 .scene__cityline {
   position: absolute;
   z-index: 1;
-  transition: opacity 220ms ease;
+  transition: opacity 220ms ease, translate 280ms cubic-bezier(0.22, 0.8, 0.2, 1);
+  will-change: transform, translate;
 }
 
 body.has-custom-wallpaper .scene__wallpaper {
   opacity: 1;
-  transform: scale(1);
+  transform: scale(1.05);
 }
 
 body.has-custom-wallpaper .scene__wallpaper::after {
@@ -300,6 +311,7 @@ body.has-custom-wallpaper .scene__cityline {
 }
 
 .scene__glow {
+  translate: calc(var(--depth-bg-x) * 0.72) calc(var(--depth-bg-y) * 0.72);
   filter: blur(20px);
   border-radius: 999px;
 }
@@ -329,6 +341,7 @@ body.has-custom-wallpaper .scene__cityline {
 }
 
 .scene__cloud {
+  translate: calc(var(--depth-bg-x) * 0.64) calc(var(--depth-bg-y) * 0.64);
   border-radius: 999px;
   filter: blur(6px);
   background:
@@ -365,6 +378,7 @@ body.has-custom-wallpaper .scene__cityline {
 }
 
 .scene__cityline {
+  translate: calc(var(--depth-bg-x) * 0.34) calc(var(--depth-bg-y) * 0.24);
   left: -6vw;
   right: -6vw;
   bottom: 8%;
@@ -418,6 +432,9 @@ body[data-browser-mode="chrome"] .hero {
 
 .hero-copy {
   text-align: center;
+  translate: var(--depth-hero-x) var(--depth-hero-y);
+  transition: translate 280ms cubic-bezier(0.22, 0.8, 0.2, 1);
+  will-change: translate;
 }
 
 .eyebrow {
@@ -680,12 +697,15 @@ body.night-solid-mode .recent-item {
 .search-shell {
   width: min(100%, 680px);
   margin: 28px auto 0;
+  translate: var(--depth-panel-x) var(--depth-panel-y);
   border-radius: 34px;
   background: var(--glass-tint);
   border: 1px solid var(--glass-overlay-border);
   box-shadow: var(--glass-shadow);
   backdrop-filter: blur(22px) saturate(var(--backdrop-saturate));
   -webkit-backdrop-filter: blur(22px) saturate(var(--backdrop-saturate));
+  transition: margin 240ms ease, translate 320ms ease-out;
+  will-change: translate;
 }
 
 body[data-browser-mode="chrome"] .search-shell {
@@ -790,6 +810,9 @@ body[data-browser-mode="chrome"] .search-shell {
   gap: 10px;
   justify-content: center;
   margin-top: 14px;
+  translate: var(--depth-panel-x) var(--depth-panel-y);
+  transition: translate 280ms cubic-bezier(0.22, 0.8, 0.2, 1);
+  will-change: translate;
 }
 
 body[data-browser-mode="chrome"] .hero-tools {
@@ -847,6 +870,9 @@ body[data-browser-mode="chrome"] .hero-tools {
   gap: 12px;
   width: min(100%, 640px);
   margin: 18px auto 0;
+  translate: var(--depth-panel-x) var(--depth-panel-y);
+  transition: translate 280ms cubic-bezier(0.22, 0.8, 0.2, 1);
+  will-change: translate;
 }
 
 body[data-browser-mode="chrome"] .quick-grid {
@@ -895,6 +921,9 @@ body[data-browser-mode="chrome"] .quick-grid {
   box-shadow: var(--surface-shadow);
   backdrop-filter: blur(22px) saturate(1.04);
   -webkit-backdrop-filter: blur(22px) saturate(1.04);
+  translate: var(--depth-panel-x) var(--depth-panel-y);
+  transition: translate 280ms cubic-bezier(0.22, 0.8, 0.2, 1);
+  will-change: translate;
 }
 
 body[data-browser-mode="chrome"] .recent-shell {
@@ -1013,6 +1042,9 @@ body[data-browser-mode="chrome"] .recent-shell {
   border: 1px solid var(--glass-overlay-border);
   backdrop-filter: blur(24px) saturate(var(--backdrop-saturate));
   -webkit-backdrop-filter: blur(24px) saturate(var(--backdrop-saturate));
+  translate: var(--depth-dock-x) var(--depth-dock-y);
+  transition: translate 280ms cubic-bezier(0.22, 0.8, 0.2, 1);
+  will-change: translate;
 }
 
 body[data-browser-mode="chrome"] .dock-shell {

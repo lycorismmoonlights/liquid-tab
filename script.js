@@ -94,6 +94,21 @@ let trueGlassRealtimeFrame = 0;
 let wallpaperBusy = false;
 let wallpaperMessage = "";
 let cropState = null;
+let parallaxFrame = 0;
+const parallaxState = {
+  targetX: 0,
+  targetY: 0,
+  currentX: 0,
+  currentY: 0,
+  baseBeta: null,
+  baseGamma: null,
+  deviceActive: false,
+  orientationAttached: false,
+  permissionRequested: false,
+  primerAttached: false,
+  primerCleanup: null,
+  pointerAttached: false
+};
 
 function getCropPreset() {
   return state.browserMode === "chrome" ? CROP_PRESETS.chrome : CROP_PRESETS.default;
@@ -302,6 +317,219 @@ function clamp(value, min, max) {
   return Math.min(max, Math.max(min, value));
 }
 
+function hasActiveOverlay() {
+  return !tabsSheet.hidden || !settingsSheet.hidden || !cropper.hidden;
+}
+
+function canUseParallax() {
+  return !state.reduceMotion && !hasActiveOverlay() && document.visibilityState !== "hidden";
+}
+
+function writeParallaxVars(x, y) {
+  body.style.setProperty("--depth-bg-x", `${(x * 14).toFixed(2)}px`);
+  body.style.setProperty("--depth-bg-y", `${(y * 12).toFixed(2)}px`);
+  body.style.setProperty("--depth-hero-x", `${(x * -4.8).toFixed(2)}px`);
+  body.style.setProperty("--depth-hero-y", `${(y * -4.2).toFixed(2)}px`);
+  body.style.setProperty("--depth-panel-x", `${(x * -3.2).toFixed(2)}px`);
+  body.style.setProperty("--depth-panel-y", `${(y * -2.8).toFixed(2)}px`);
+  body.style.setProperty("--depth-dock-x", `${(x * -2.1).toFixed(2)}px`);
+  body.style.setProperty("--depth-dock-y", `${(y * -1.8).toFixed(2)}px`);
+}
+
+function queueParallaxFrame() {
+  if (parallaxFrame) {
+    return;
+  }
+
+  parallaxFrame = requestAnimationFrame(stepParallax);
+}
+
+function stepParallax() {
+  parallaxFrame = 0;
+
+  if (!canUseParallax()) {
+    parallaxState.targetX = 0;
+    parallaxState.targetY = 0;
+  }
+
+  const easing = canUseParallax() ? 0.14 : 0.2;
+  parallaxState.currentX += (parallaxState.targetX - parallaxState.currentX) * easing;
+  parallaxState.currentY += (parallaxState.targetY - parallaxState.currentY) * easing;
+
+  if (Math.abs(parallaxState.targetX - parallaxState.currentX) < 0.002) {
+    parallaxState.currentX = parallaxState.targetX;
+  }
+
+  if (Math.abs(parallaxState.targetY - parallaxState.currentY) < 0.002) {
+    parallaxState.currentY = parallaxState.targetY;
+  }
+
+  writeParallaxVars(parallaxState.currentX, parallaxState.currentY);
+
+  if (
+    Math.abs(parallaxState.targetX - parallaxState.currentX) > 0.001 ||
+    Math.abs(parallaxState.targetY - parallaxState.currentY) > 0.001 ||
+    Math.abs(parallaxState.currentX) > 0.001 ||
+    Math.abs(parallaxState.currentY) > 0.001
+  ) {
+    queueParallaxFrame();
+  }
+}
+
+function setParallaxTarget(x, y) {
+  if (!canUseParallax()) {
+    return;
+  }
+
+  parallaxState.targetX = clamp(x, -1, 1);
+  parallaxState.targetY = clamp(y, -1, 1);
+  queueParallaxFrame();
+}
+
+function resetParallaxTarget() {
+  parallaxState.targetX = 0;
+  parallaxState.targetY = 0;
+  queueParallaxFrame();
+}
+
+function resetParallaxBaseline() {
+  parallaxState.baseBeta = null;
+  parallaxState.baseGamma = null;
+}
+
+function handlePointerParallax(event) {
+  if (parallaxState.deviceActive || !canUseParallax()) {
+    return;
+  }
+
+  const width = window.innerWidth || 1;
+  const height = window.innerHeight || 1;
+  const x = ((event.clientX / width) * 2 - 1) * 0.72;
+  const y = ((event.clientY / height) * 2 - 1) * 0.72;
+  setParallaxTarget(x, y);
+}
+
+function attachPointerParallax() {
+  if (parallaxState.pointerAttached) {
+    return;
+  }
+
+  parallaxState.pointerAttached = true;
+  window.addEventListener("mousemove", handlePointerParallax, { passive: true });
+  window.addEventListener("mouseout", (event) => {
+    if (!event.relatedTarget && !parallaxState.deviceActive) {
+      resetParallaxTarget();
+    }
+  }, { passive: true });
+}
+
+function handleDeviceOrientation(event) {
+  if (!canUseParallax()) {
+    return;
+  }
+
+  if (typeof event.beta !== "number" || typeof event.gamma !== "number") {
+    return;
+  }
+
+  if (parallaxState.baseBeta === null || parallaxState.baseGamma === null) {
+    parallaxState.baseBeta = event.beta;
+    parallaxState.baseGamma = event.gamma;
+  }
+
+  parallaxState.deviceActive = true;
+  const x = clamp((event.gamma - parallaxState.baseGamma) / 18, -1, 1);
+  const y = clamp((event.beta - parallaxState.baseBeta) / 22, -1, 1);
+  setParallaxTarget(x, y);
+}
+
+function attachDeviceOrientation() {
+  if (parallaxState.orientationAttached || typeof window.DeviceOrientationEvent === "undefined") {
+    return;
+  }
+
+  window.addEventListener("deviceorientation", handleDeviceOrientation, { passive: true });
+  parallaxState.orientationAttached = true;
+}
+
+function requestMotionPermission() {
+  if (parallaxState.permissionRequested || typeof window.DeviceOrientationEvent === "undefined") {
+    return;
+  }
+
+  parallaxState.permissionRequested = true;
+
+  if (typeof window.DeviceOrientationEvent.requestPermission === "function") {
+    window.DeviceOrientationEvent.requestPermission()
+      .then((result) => {
+        if (result === "granted") {
+          attachDeviceOrientation();
+        }
+      })
+      .catch((error) => {
+        console.warn("Motion permission request failed.", error);
+      });
+    return;
+  }
+
+  attachDeviceOrientation();
+}
+
+function primeMotionPermission() {
+  if (
+    parallaxState.primerAttached ||
+    parallaxState.permissionRequested ||
+    parallaxState.orientationAttached ||
+    typeof window.DeviceOrientationEvent === "undefined"
+  ) {
+    return;
+  }
+
+  if (typeof window.DeviceOrientationEvent.requestPermission !== "function") {
+    attachDeviceOrientation();
+    return;
+  }
+
+  const request = () => {
+    if (typeof parallaxState.primerCleanup === "function") {
+      parallaxState.primerCleanup();
+      parallaxState.primerCleanup = null;
+    }
+
+    parallaxState.primerAttached = false;
+
+    if (!canUseParallax()) {
+      primeMotionPermission();
+      return;
+    }
+
+    requestMotionPermission();
+  };
+
+  parallaxState.primerAttached = true;
+  parallaxState.primerCleanup = () => {
+    window.removeEventListener("pointerup", request);
+    window.removeEventListener("touchend", request);
+    window.removeEventListener("click", request);
+  };
+
+  window.addEventListener("pointerup", request, { passive: true });
+  window.addEventListener("touchend", request, { passive: true });
+  window.addEventListener("click", request, { passive: true });
+}
+
+function syncParallax() {
+  attachPointerParallax();
+  primeMotionPermission();
+
+  if (!canUseParallax()) {
+    resetParallaxTarget();
+    return;
+  }
+
+  queueParallaxFrame();
+}
+
 function resolveTheme() {
   if (state.themeMode === "system") {
     return systemThemeQuery && systemThemeQuery.matches ? "night" : "day";
@@ -369,6 +597,7 @@ function applyState() {
   syncCropLayout(true);
   syncWallpaperControls();
   syncLiquidGlass();
+  syncParallax();
 }
 
 function getTrueGlassControls() {
@@ -946,6 +1175,7 @@ function closeSheets() {
   tabsSheet.hidden = true;
   settingsSheet.hidden = true;
   sheetBackdrop.hidden = true;
+  syncParallax();
 }
 
 function openSheet(sheet) {
@@ -958,6 +1188,7 @@ function openSheet(sheet) {
   settingsSheet.hidden = true;
   sheet.hidden = false;
   sheetBackdrop.hidden = false;
+  syncParallax();
 }
 
 function loadImage(source) {
@@ -995,6 +1226,7 @@ function closeCropper() {
   cropperZoom.value = "1";
   cropperApply.disabled = false;
   cropperCancel.disabled = false;
+  syncParallax();
 }
 
 function getCropScale() {
@@ -1512,14 +1744,28 @@ function handleViewportResize() {
   syncViewportHeight();
   syncCropLayout(true);
   syncLiquidGlass();
+  syncParallax();
 }
 
 window.addEventListener("resize", handleViewportResize);
+window.addEventListener("orientationchange", () => {
+  resetParallaxBaseline();
+  resetParallaxTarget();
+});
 
 if (window.visualViewport) {
   window.visualViewport.addEventListener("resize", handleViewportResize);
   window.visualViewport.addEventListener("scroll", handleViewportResize);
 }
+
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "hidden") {
+    resetParallaxTarget();
+    return;
+  }
+
+  syncParallax();
+});
 
 if (systemThemeQuery) {
   const handleSystemThemeChange = () => {
