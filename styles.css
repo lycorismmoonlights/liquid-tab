@@ -92,6 +92,13 @@ body[data-theme="night"] {
   --eyebrow-color: rgba(196, 208, 232, 0.66);
   --recent-eyebrow-color: rgba(169, 183, 212, 0.52);
   --search-placeholder: rgba(231, 236, 247, 0.78);
+  --night-solid-surface-bg: linear-gradient(180deg, rgba(51, 43, 39, 0.96), rgba(39, 33, 29, 0.94));
+  --night-solid-strong-bg: linear-gradient(180deg, rgba(48, 41, 37, 0.98), rgba(35, 30, 27, 0.96));
+  --night-solid-item-bg: linear-gradient(180deg, rgba(59, 51, 46, 0.94), rgba(44, 38, 34, 0.92));
+  --night-solid-border: rgba(255, 255, 255, 0.08);
+  --night-solid-shadow: 0 14px 28px rgba(0, 0, 0, 0.24);
+  --night-solid-button-bg: rgba(255, 255, 255, 0.06);
+  --night-solid-button-border: rgba(255, 255, 255, 0.08);
 }
 
 body[data-theme="night"][data-style="transparent"] {
@@ -580,6 +587,72 @@ body.true-glass-enabled .recent-shell,
 body.true-glass-enabled .hero-tool {
   border-color: var(--surface-border);
   box-shadow: var(--surface-shadow);
+}
+
+body.night-solid-mode .true-glass-canvas,
+body.night-solid-mode .liquid-lens {
+  display: none !important;
+}
+
+body.night-solid-mode .glass-shell::before,
+body.night-solid-mode .glass-shell--liquid::after {
+  display: none;
+}
+
+body.night-solid-mode .search-shell,
+body.night-solid-mode .quick-card,
+body.night-solid-mode .recent-shell,
+body.night-solid-mode .dock-shell,
+body.night-solid-mode .hero-tool {
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+body.night-solid-mode .search-shell,
+body.night-solid-mode .dock-shell {
+  background: var(--night-solid-strong-bg) !important;
+  border-color: var(--night-solid-border) !important;
+  box-shadow: var(--night-solid-shadow) !important;
+}
+
+body.night-solid-mode .quick-card,
+body.night-solid-mode .recent-shell,
+body.night-solid-mode .hero-tool {
+  background: var(--night-solid-surface-bg) !important;
+  border-color: var(--night-solid-border) !important;
+  box-shadow: var(--night-solid-shadow) !important;
+}
+
+body.night-solid-mode .search-mark,
+body.night-solid-mode .quick-card__icon,
+body.night-solid-mode .recent-item__icon,
+body.night-solid-mode .dock-button--primary,
+body.night-solid-mode .tab-badge {
+  background: var(--night-solid-button-bg);
+  border-color: var(--night-solid-button-border);
+  box-shadow: none;
+}
+
+body.night-solid-mode .search-actions {
+  gap: 2px;
+}
+
+body.night-solid-mode .icon-button {
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+body.night-solid-mode .icon-button--filled {
+  background: transparent;
+  border: 0;
+}
+
+body.night-solid-mode .recent-item {
+  background: var(--night-solid-item-bg);
+  border-color: var(--night-solid-border);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
 }
 
 .search-shell {

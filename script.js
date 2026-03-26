@@ -310,12 +310,16 @@ function resolveTheme() {
   return state.themeMode;
 }
 
+function shouldUseGlassEffects() {
+  return resolveTheme() !== "night";
+}
+
 function syncThemeColor() {
   if (!themeColorMeta) {
     return;
   }
 
-  themeColorMeta.setAttribute("content", body.dataset.theme === "day" ? "#f5f8fc" : "#24344c");
+  themeColorMeta.setAttribute("content", body.dataset.theme === "day" ? "#f5f8fc" : "#2c2623");
 }
 
 function applyState() {
@@ -323,6 +327,7 @@ function applyState() {
   body.dataset.theme = resolveTheme();
   body.dataset.browserMode = state.browserMode;
   body.dataset.style = state.style;
+  body.classList.toggle("night-solid-mode", !shouldUseGlassEffects());
   body.classList.toggle("is-reduced-motion", state.reduceMotion);
   motionToggle.checked = state.reduceMotion;
 
@@ -508,6 +513,11 @@ function startTrueGlassRealtimeLoop() {
       return;
     }
 
+    if (!shouldUseGlassEffects()) {
+      trueGlassRealtimeFrame = requestAnimationFrame(tick);
+      return;
+    }
+
     if (document.visibilityState !== "hidden") {
       trueGlassContainers.forEach((container) => {
         if (!container || typeof container.render !== "function" || !container.element) {
@@ -600,7 +610,7 @@ function initTrueGlassForElement(element) {
 }
 
 function syncTrueGlass() {
-  if (!trueGlassReady) {
+  if (!trueGlassReady || !shouldUseGlassEffects()) {
     return;
   }
 
@@ -618,7 +628,7 @@ function syncTrueGlass() {
 }
 
 async function captureTrueGlassSnapshot() {
-  if (!trueGlassReady || trueGlassSnapshotPending || typeof window.html2canvas !== "function") {
+  if (!trueGlassReady || trueGlassSnapshotPending || typeof window.html2canvas !== "function" || !shouldUseGlassEffects()) {
     return;
   }
 
@@ -681,7 +691,7 @@ async function captureTrueGlassSnapshot() {
 }
 
 function refreshTrueGlassSnapshot() {
-  if (!trueGlassReady) {
+  if (!trueGlassReady || !shouldUseGlassEffects()) {
     return;
   }
 
@@ -697,7 +707,7 @@ function refreshTrueGlassSnapshot() {
 }
 
 function initTrueGlass() {
-  if (trueGlassReady || !canUseTrueGlass()) {
+  if (trueGlassReady || !canUseTrueGlass() || !shouldUseGlassEffects()) {
     return false;
   }
 
@@ -749,6 +759,10 @@ function getLiquidPreset() {
 }
 
 function refreshLiquidGlassSnapshot() {
+  if (!shouldUseGlassEffects()) {
+    return;
+  }
+
   if (trueGlassReady) {
     refreshTrueGlassSnapshot();
     return;
@@ -783,7 +797,39 @@ function refreshLiquidGlassSnapshot() {
 }
 
 function syncLiquidGlass() {
+  const glassEnabled = shouldUseGlassEffects();
+  body.classList.toggle("night-solid-mode", !glassEnabled);
+  body.classList.toggle("true-glass-enabled", trueGlassReady && glassEnabled);
+  body.classList.toggle("liquid-gl-enabled", liquidGlassReady && glassEnabled);
+
+  if (!glassEnabled) {
+    if (trueGlassRealtimeFrame) {
+      cancelAnimationFrame(trueGlassRealtimeFrame);
+      trueGlassRealtimeFrame = 0;
+    }
+
+    if (trueGlassSnapshotFrame) {
+      cancelAnimationFrame(trueGlassSnapshotFrame);
+      trueGlassSnapshotFrame = 0;
+    }
+
+    if (liquidSnapshotFrame) {
+      cancelAnimationFrame(liquidSnapshotFrame);
+      liquidSnapshotFrame = 0;
+    }
+
+    return;
+  }
+
+  if (!trueGlassReady && !liquidGlassReady) {
+    initLiquidGlass();
+    return;
+  }
+
   if (trueGlassReady) {
+    if (!trueGlassRealtimeFrame) {
+      startTrueGlassRealtimeLoop();
+    }
     syncTrueGlass();
     return;
   }
@@ -809,6 +855,10 @@ function syncLiquidGlass() {
 }
 
 function initLiquidGlass() {
+  if (!shouldUseGlassEffects()) {
+    return;
+  }
+
   if (initTrueGlass()) {
     return;
   }
