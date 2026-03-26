@@ -117,9 +117,9 @@ body[data-theme="day"] {
   color-scheme: light;
   --text-secondary: rgba(245, 245, 248, 0.76);
   --text-muted: rgba(203, 212, 228, 0.56);
-  --control-text-primary: rgba(39, 41, 48, 0.96);
-  --control-text-secondary: rgba(84, 87, 96, 0.72);
-  --control-text-muted: rgba(109, 113, 123, 0.62);
+  --control-text-primary: rgba(255, 255, 255, 0.96);
+  --control-text-secondary: rgba(245, 247, 252, 0.8);
+  --control-text-muted: rgba(233, 238, 246, 0.66);
   --surface-border: rgba(255, 255, 255, 0.28);
   --surface-shadow: 0 12px 24px rgba(17, 22, 33, 0.08);
   --surface-bg: linear-gradient(180deg, rgba(255, 255, 255, 0.78), rgba(248, 248, 250, 0.68));
@@ -142,7 +142,7 @@ body[data-theme="day"] {
   --sheet-bg: linear-gradient(180deg, rgba(244, 247, 252, 0.82), rgba(231, 238, 246, 0.86));
   --eyebrow-color: rgba(255, 236, 209, 0.52);
   --recent-eyebrow-color: rgba(147, 131, 112, 0.56);
-  --search-placeholder: rgba(102, 104, 113, 0.72);
+  --search-placeholder: rgba(244, 246, 251, 0.72);
 }
 
 body[data-theme="day"][data-style="transparent"] {
