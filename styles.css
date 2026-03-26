@@ -1191,8 +1191,21 @@ body[data-browser-mode="chrome"] .dock-shell {
   color: var(--control-text-primary);
 }
 
+#settings-sheet {
+  top: 50%;
+  bottom: auto;
+  transform: translateY(-44%);
+  max-height: min(640px, calc(var(--viewport-height) - 120px));
+}
+
 body[data-browser-mode="chrome"] .sheet {
   bottom: calc(var(--bottom-safe) + 24px);
+}
+
+body[data-browser-mode="chrome"] #settings-sheet {
+  top: 52%;
+  bottom: auto;
+  transform: translateY(-44%);
 }
 
 .sheet__header {
@@ -1312,6 +1325,26 @@ body[data-browser-mode="chrome"] .sheet {
   margin: 18px 0 0;
   color: var(--control-text-secondary);
   line-height: 1.6;
+}
+
+body[data-theme="day"] #settings-sheet {
+  color: rgba(48, 52, 61, 0.96);
+}
+
+body[data-theme="day"] #settings-sheet .sheet__title,
+body[data-theme="day"] #settings-sheet .segment,
+body[data-theme="day"] #settings-sheet .sheet-link {
+  color: rgba(48, 52, 61, 0.96);
+}
+
+body[data-theme="day"] #settings-sheet .sheet__eyebrow,
+body[data-theme="day"] #settings-sheet .setting-label {
+  color: rgba(105, 111, 124, 0.86);
+}
+
+body[data-theme="day"] #settings-sheet .setting-hint,
+body[data-theme="day"] #settings-sheet .sheet-note {
+  color: rgba(126, 133, 146, 0.86);
 }
 
 .sr-only {
