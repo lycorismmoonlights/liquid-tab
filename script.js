@@ -65,6 +65,9 @@ const settingsSheet = document.getElementById("settings-sheet");
 const sheetBackdrop = document.getElementById("sheet-backdrop");
 const motionToggle = document.getElementById("motion-toggle");
 const tabBadge = document.getElementById("tab-badge");
+const desktopTabs = document.getElementById("desktop-tabs");
+const desktopSettings = document.getElementById("desktop-settings");
+const desktopCustomize = document.getElementById("desktop-customize");
 const wallpaperLayer = document.getElementById("wallpaper-layer");
 const wallpaperInput = document.getElementById("wallpaper-input");
 const wallpaperUpload = document.getElementById("wallpaper-upload");
@@ -317,6 +320,14 @@ function clamp(value, min, max) {
   return Math.min(max, Math.max(min, value));
 }
 
+function resolveLayoutMode() {
+  return window.innerWidth >= 980 ? "desktop" : "mobile";
+}
+
+function syncLayoutMode() {
+  body.dataset.layout = resolveLayoutMode();
+}
+
 function hasActiveOverlay() {
   return !tabsSheet.hidden || !settingsSheet.hidden || !cropper.hidden;
 }
@@ -551,6 +562,7 @@ function syncThemeColor() {
 }
 
 function applyState() {
+  syncLayoutMode();
   body.dataset.themeMode = state.themeMode;
   body.dataset.theme = resolveTheme();
   body.dataset.browserMode = state.browserMode;
@@ -1715,6 +1727,15 @@ document.getElementById("nav-tabs").addEventListener("click", () => openSheet(ta
 document.getElementById("nav-menu").addEventListener("click", () => openSheet(settingsSheet));
 document.getElementById("chrome-tabs").addEventListener("click", () => openSheet(tabsSheet));
 document.getElementById("chrome-settings").addEventListener("click", () => openSheet(settingsSheet));
+if (desktopTabs) {
+  desktopTabs.addEventListener("click", () => openSheet(tabsSheet));
+}
+if (desktopSettings) {
+  desktopSettings.addEventListener("click", () => openSheet(settingsSheet));
+}
+if (desktopCustomize) {
+  desktopCustomize.addEventListener("click", () => openSheet(settingsSheet));
+}
 sheetBackdrop.addEventListener("click", closeSheets);
 
 motionToggle.addEventListener("change", () => {
@@ -1741,6 +1762,7 @@ document.addEventListener("keydown", (event) => {
 });
 
 function handleViewportResize() {
+  syncLayoutMode();
   syncViewportHeight();
   syncCropLayout(true);
   syncLiquidGlass();

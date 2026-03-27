@@ -418,6 +418,83 @@ body.has-custom-wallpaper .scene__cityline {
   padding-top: clamp(14px, 3vh, 30px);
 }
 
+.desktop-bar,
+.desktop-customize {
+  display: none;
+}
+
+.desktop-bar {
+  position: fixed;
+  top: 24px;
+  right: 28px;
+  z-index: 4;
+  align-items: center;
+  gap: 14px;
+}
+
+.desktop-link {
+  color: rgba(255, 255, 255, 0.92);
+  text-decoration: none;
+  font-size: 0.95rem;
+  text-shadow: 0 2px 12px rgba(0, 0, 0, 0.18);
+}
+
+.desktop-icon-button,
+.desktop-avatar,
+.desktop-customize {
+  border: 0;
+  color: var(--control-text-primary);
+  background: rgba(255, 255, 255, 0.18);
+  box-shadow: 0 10px 24px rgba(10, 14, 24, 0.18);
+  backdrop-filter: blur(18px) saturate(1.06);
+  -webkit-backdrop-filter: blur(18px) saturate(1.06);
+}
+
+.desktop-icon-button,
+.desktop-avatar {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+}
+
+.desktop-icon-button svg,
+.desktop-customize svg {
+  width: 20px;
+  height: 20px;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  fill: none;
+}
+
+.desktop-avatar {
+  padding: 0;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.24);
+}
+
+.desktop-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.desktop-customize {
+  position: fixed;
+  right: 28px;
+  bottom: 24px;
+  z-index: 4;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 0 16px;
+  border-radius: 999px;
+  font-weight: 600;
+}
+
 body[data-browser-mode="chrome"] .page-shell {
   padding:
     calc(var(--top-safe) + 8px)
@@ -1357,6 +1434,218 @@ body[data-browser-mode="chrome"] #settings-sheet {
   margin: 18px 0 0;
   color: var(--control-text-secondary);
   line-height: 1.6;
+}
+
+body[data-layout="desktop"]::after {
+  opacity: 0;
+}
+
+body[data-layout="desktop"] .desktop-bar,
+body[data-layout="desktop"] .desktop-customize {
+  display: inline-flex;
+}
+
+body[data-layout="desktop"] .page-shell {
+  padding: 28px 48px 48px;
+}
+
+body[data-layout="desktop"] .hero {
+  min-height: calc(var(--viewport-height) - 56px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  padding-top: clamp(84px, 12vh, 142px);
+}
+
+body[data-layout="desktop"] .eyebrow,
+body[data-layout="desktop"] .subtitle,
+body[data-layout="desktop"] .hero-tools,
+body[data-layout="desktop"] .dock-shell {
+  display: none !important;
+}
+
+body[data-layout="desktop"] .wordmark {
+  font-size: clamp(5rem, 8vw, 8.1rem);
+  letter-spacing: -0.075em;
+}
+
+body[data-layout="desktop"] .search-shell {
+  width: min(100%, 760px);
+  margin-top: 28px;
+  border-radius: 32px;
+}
+
+body[data-layout="desktop"] .search-panel {
+  padding: 14px 16px 14px 18px;
+}
+
+body[data-layout="desktop"] .liquid-lens,
+body[data-layout="desktop"] .true-glass-canvas,
+body[data-layout="desktop"] .glass-shell::before,
+body[data-layout="desktop"] .glass-shell--liquid::after {
+  display: none !important;
+}
+
+body[data-layout="desktop"] .search-shell,
+body[data-layout="desktop"] .quick-card,
+body[data-layout="desktop"] .recent-shell,
+body[data-layout="desktop"] .recent-item,
+body[data-layout="desktop"] .hero-tool {
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+body[data-layout="desktop"][data-theme="day"] .search-shell {
+  background: rgba(255, 255, 255, 0.92);
+  border-color: rgba(30, 38, 54, 0.08);
+  box-shadow: 0 14px 30px rgba(17, 25, 40, 0.14);
+}
+
+body[data-layout="desktop"][data-theme="day"] .search-mark,
+body[data-layout="desktop"][data-theme="day"] .icon-button {
+  background: rgba(248, 249, 252, 0.94);
+  border-color: rgba(32, 40, 54, 0.08);
+  box-shadow: none;
+  color: rgba(34, 39, 47, 0.88);
+}
+
+body[data-layout="desktop"][data-theme="day"] .search-input,
+body[data-layout="desktop"][data-theme="day"] .search-input::placeholder {
+  color: rgba(79, 86, 97, 0.92);
+}
+
+body[data-layout="desktop"][data-theme="night"] .search-shell {
+  background: rgba(31, 33, 38, 0.94);
+  border-color: rgba(255, 255, 255, 0.08);
+  box-shadow: 0 16px 34px rgba(0, 0, 0, 0.3);
+}
+
+body[data-layout="desktop"][data-theme="night"] .search-mark,
+body[data-layout="desktop"][data-theme="night"] .icon-button {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.08);
+  box-shadow: none;
+}
+
+body[data-layout="desktop"] .quick-grid {
+  width: min(100%, 760px);
+  grid-template-columns: repeat(4, minmax(92px, 110px));
+  justify-content: center;
+  gap: 18px 22px;
+  margin-top: 34px;
+}
+
+body[data-layout="desktop"] .quick-card {
+  padding: 0;
+  background: transparent !important;
+  border: 0 !important;
+  box-shadow: none !important;
+  overflow: visible;
+}
+
+body[data-layout="desktop"] .quick-card__content {
+  flex-direction: column;
+  justify-content: center;
+  gap: 10px;
+  text-align: center;
+}
+
+body[data-layout="desktop"] .quick-card__icon {
+  width: 58px;
+  height: 58px;
+  border-radius: 20px;
+  box-shadow: 0 10px 22px rgba(8, 12, 20, 0.14);
+}
+
+body[data-layout="desktop"][data-theme="day"] .quick-card__icon {
+  background: rgba(255, 255, 255, 0.84);
+  border-color: rgba(30, 38, 54, 0.08);
+  color: rgba(44, 50, 59, 0.92);
+}
+
+body[data-layout="desktop"][data-theme="night"] .quick-card__icon {
+  background: rgba(22, 24, 28, 0.9);
+  border-color: rgba(255, 255, 255, 0.08);
+}
+
+body[data-layout="desktop"] .quick-card__label {
+  font-size: 0.98rem;
+  color: var(--hero-text-primary);
+  text-shadow: 0 3px 14px rgba(0, 0, 0, 0.24);
+}
+
+body[data-layout="desktop"] .recent-shell {
+  width: min(100%, 760px);
+  margin-top: 42px;
+  border-radius: 28px;
+}
+
+body[data-layout="desktop"][data-theme="day"] .recent-shell {
+  background: rgba(255, 255, 255, 0.42);
+  border-color: rgba(255, 255, 255, 0.2);
+  box-shadow: 0 18px 36px rgba(17, 25, 40, 0.12);
+}
+
+body[data-layout="desktop"][data-theme="night"] .recent-shell {
+  background: rgba(20, 22, 27, 0.74);
+  border-color: rgba(255, 255, 255, 0.08);
+  box-shadow: 0 18px 38px rgba(0, 0, 0, 0.24);
+}
+
+body[data-layout="desktop"] .recent-panel {
+  padding: 20px 22px 22px;
+}
+
+body[data-layout="desktop"] .recent-list {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+body[data-layout="desktop"][data-theme="day"] .recent-item {
+  background: rgba(255, 255, 255, 0.68);
+  border-color: rgba(30, 38, 54, 0.08);
+}
+
+body[data-layout="desktop"][data-theme="night"] .recent-item {
+  background: rgba(255, 255, 255, 0.04);
+  border-color: rgba(255, 255, 255, 0.06);
+}
+
+body[data-layout="desktop"] .sheet {
+  top: 50%;
+  left: 50%;
+  right: auto;
+  bottom: auto;
+  width: min(560px, calc(100vw - 64px));
+  max-height: min(760px, calc(var(--viewport-height) - 72px));
+  transform: translate(-50%, -50%);
+}
+
+body[data-layout="desktop"] #settings-sheet {
+  top: 50%;
+  transform: translate(-50%, -50%);
+}
+
+body[data-layout="desktop"] .cropper__phone {
+  width: min(100%, 320px);
+}
+
+body[data-layout="desktop"][data-theme="day"] .desktop-link {
+  color: rgba(255, 255, 255, 0.94);
+}
+
+body[data-layout="desktop"][data-theme="day"] .desktop-icon-button,
+body[data-layout="desktop"][data-theme="day"] .desktop-avatar,
+body[data-layout="desktop"][data-theme="day"] .desktop-customize {
+  background: rgba(255, 255, 255, 0.32);
+  color: rgba(34, 39, 47, 0.9);
+}
+
+body[data-layout="desktop"][data-theme="night"] .desktop-icon-button,
+body[data-layout="desktop"][data-theme="night"] .desktop-avatar,
+body[data-layout="desktop"][data-theme="night"] .desktop-customize {
+  background: rgba(15, 17, 21, 0.54);
 }
 
 body[data-theme="day"] #settings-sheet {
