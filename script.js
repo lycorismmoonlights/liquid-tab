@@ -671,53 +671,53 @@ function buildAdaptiveDayPalette(image) {
   const softInk = { r: 114, g: 123, b: 140 };
   const placeholderInk = { r: 126, g: 136, b: 152 };
 
-  const heroNeedsDarkText = heroSample.luminance > 0.52;
-  const accentTint = mixRgb(overallSample.rgb, paperWhite, 0.72);
-  const accentGlow = mixRgb(panelSample.rgb, clearWhite, 0.58);
-  const liquidEdge = mixRgb(heroSample.rgb, clearWhite, 0.66);
-  const frostedTop = mixRgb(panelSample.rgb, paperWhite, 0.9);
-  const frostedBottom = mixRgb(panelSample.rgb, paperWhite, 0.78);
+  const heroNeedsDarkText = heroSample.luminance > 0.46;
+  const accentTint = mixRgb(overallSample.rgb, paperWhite, 0.86);
+  const accentGlow = mixRgb(panelSample.rgb, clearWhite, 0.82);
+  const liquidEdge = mixRgb(heroSample.rgb, clearWhite, 0.84);
+  const frostedTop = mixRgb(panelSample.rgb, paperWhite, 0.94);
+  const frostedBottom = mixRgb(panelSample.rgb, paperWhite, 0.88);
 
-  const topAlphaBase = isTransparentStyle ? 0.38 : 0.58;
-  const bottomAlphaBase = isTransparentStyle ? 0.18 : 0.34;
-  const tintAlphaBase = isTransparentStyle ? 0.22 : 0.34;
-  const brightnessBoost = overallSample.luminance > 0.66 ? 0.06 : overallSample.luminance < 0.34 ? -0.03 : 0;
-  const saturationBoost = overallSample.saturation > 0.42 ? 0.04 : 0;
+  const topAlphaBase = isTransparentStyle ? 0.26 : 0.4;
+  const bottomAlphaBase = isTransparentStyle ? 0.12 : 0.18;
+  const tintAlphaBase = isTransparentStyle ? 0.14 : 0.2;
+  const brightnessBoost = overallSample.luminance > 0.68 ? 0.04 : overallSample.luminance < 0.28 ? -0.02 : 0;
+  const saturationBoost = overallSample.saturation > 0.42 ? 0.02 : 0;
 
-  const topAlpha = clamp(topAlphaBase + brightnessBoost, isTransparentStyle ? 0.28 : 0.46, isTransparentStyle ? 0.48 : 0.66);
-  const bottomAlpha = clamp(bottomAlphaBase + brightnessBoost * 0.6, isTransparentStyle ? 0.12 : 0.22, isTransparentStyle ? 0.3 : 0.42);
-  const tintAlpha = clamp(tintAlphaBase + brightnessBoost + saturationBoost, isTransparentStyle ? 0.18 : 0.28, isTransparentStyle ? 0.32 : 0.46);
-  const borderAlpha = clamp(0.28 + brightnessBoost * 0.8 + saturationBoost * 0.5, 0.24, 0.48);
-  const buttonFillAlpha = clamp((isTransparentStyle ? 0.16 : 0.24) + brightnessBoost * 0.6, 0.14, 0.3);
+  const topAlpha = clamp(topAlphaBase + brightnessBoost, isTransparentStyle ? 0.2 : 0.32, isTransparentStyle ? 0.34 : 0.5);
+  const bottomAlpha = clamp(bottomAlphaBase + brightnessBoost * 0.45, isTransparentStyle ? 0.08 : 0.12, isTransparentStyle ? 0.18 : 0.24);
+  const tintAlpha = clamp(tintAlphaBase + brightnessBoost * 0.5 + saturationBoost, isTransparentStyle ? 0.1 : 0.14, isTransparentStyle ? 0.2 : 0.26);
+  const borderAlpha = clamp(0.34 + brightnessBoost * 0.7 + saturationBoost * 0.4, 0.28, 0.54);
+  const buttonFillAlpha = clamp((isTransparentStyle ? 0.14 : 0.18) + brightnessBoost * 0.35, 0.12, 0.24);
 
   return {
     "--adaptive-hero-text-primary": heroNeedsDarkText ? rgbToCss(mixRgb(heroSample.rgb, deepInk, 0.88), 0.96) : "rgba(255, 255, 255, 0.98)",
     "--adaptive-hero-text-secondary": heroNeedsDarkText ? rgbToCss(mixRgb(heroSample.rgb, mediumInk, 0.84), 0.88) : "rgba(246, 248, 252, 0.88)",
     "--adaptive-hero-eyebrow-color": heroNeedsDarkText ? rgbToCss(mixRgb(heroSample.rgb, softInk, 0.82), 0.78) : "rgba(255, 245, 232, 0.74)",
-    "--adaptive-control-text-primary": rgbToCss(mixRgb(panelSample.rgb, deepInk, 0.9), 0.94),
-    "--adaptive-control-text-secondary": rgbToCss(mixRgb(panelSample.rgb, mediumInk, 0.86), 0.84),
-    "--adaptive-control-text-muted": rgbToCss(mixRgb(panelSample.rgb, softInk, 0.84), 0.74),
+    "--adaptive-control-text-primary": rgbToCss(mixRgb(panelSample.rgb, deepInk, 0.94), 0.96),
+    "--adaptive-control-text-secondary": rgbToCss(mixRgb(panelSample.rgb, mediumInk, 0.9), 0.88),
+    "--adaptive-control-text-muted": rgbToCss(mixRgb(panelSample.rgb, softInk, 0.9), 0.76),
     "--adaptive-recent-eyebrow-color": rgbToCss(mixRgb(panelSample.rgb, mediumInk, 0.82), 0.66),
-    "--adaptive-search-placeholder": rgbToCss(mixRgb(panelSample.rgb, placeholderInk, 0.82), 0.82),
+    "--adaptive-search-placeholder": rgbToCss(mixRgb(panelSample.rgb, placeholderInk, 0.88), 0.82),
     "--adaptive-surface-border": rgbToCss(clearWhite, borderAlpha),
-    "--adaptive-surface-shadow": isTransparentStyle ? "0 16px 28px rgba(17, 22, 33, 0.08)" : "0 20px 42px rgba(17, 22, 33, 0.12)",
+    "--adaptive-surface-shadow": isTransparentStyle ? "0 16px 30px rgba(17, 22, 33, 0.06), 0 6px 14px rgba(17, 22, 33, 0.03), inset 0 1px 0 rgba(255, 255, 255, 0.74)" : "0 22px 44px rgba(17, 22, 33, 0.1), 0 8px 20px rgba(17, 22, 33, 0.05), inset 0 1px 0 rgba(255, 255, 255, 0.84), inset 0 -1px 0 rgba(160, 177, 205, 0.16)",
     "--adaptive-surface-bg": `linear-gradient(180deg, ${rgbToCss(frostedTop, topAlpha)}, ${rgbToCss(frostedBottom, bottomAlpha)})`,
-    "--adaptive-surface-highlight": `radial-gradient(140% 110% at 18% 0%, ${rgbToCss(accentGlow, isTransparentStyle ? 0.2 : 0.28)}, transparent 34%), linear-gradient(180deg, rgba(255, 255, 255, ${isTransparentStyle ? "0.34" : "0.64"}), rgba(255, 255, 255, ${isTransparentStyle ? "0.08" : "0.18"}) 42%, rgba(255, 255, 255, 0.05) 78%)`,
-    "--adaptive-surface-stroke": rgbToCss(clearWhite, clamp(borderAlpha - 0.06, 0.18, 0.42)),
-    "--adaptive-dock-bg": `linear-gradient(180deg, ${rgbToCss(frostedTop, clamp(topAlpha - 0.04, 0.24, 0.58))}, ${rgbToCss(frostedBottom, clamp(bottomAlpha - 0.03, 0.12, 0.34))})`,
-    "--adaptive-dock-shadow": isTransparentStyle ? "0 14px 26px rgba(17, 22, 33, 0.06)" : "0 18px 38px rgba(17, 22, 33, 0.1)",
-    "--adaptive-chip-active-bg": rgbToCss(clearWhite, clamp(buttonFillAlpha + 0.08, 0.22, 0.42)),
-    "--adaptive-chip-active-border": rgbToCss(clearWhite, clamp(borderAlpha + 0.02, 0.26, 0.48)),
-    "--adaptive-backdrop-saturate": isTransparentStyle ? "1.08" : "1.18",
+    "--adaptive-surface-highlight": `radial-gradient(136% 88% at 14% 0%, ${rgbToCss(accentGlow, isTransparentStyle ? 0.48 : 0.72)}, transparent 44%), radial-gradient(108% 74% at 90% 100%, ${rgbToCss(accentTint, isTransparentStyle ? 0.06 : 0.12)}, transparent 44%), linear-gradient(180deg, rgba(255, 255, 255, ${isTransparentStyle ? "0.46" : "0.78"}), rgba(255, 255, 255, ${isTransparentStyle ? "0.12" : "0.2"}) 40%, rgba(255, 255, 255, 0.03) 74%, ${rgbToCss(accentTint, isTransparentStyle ? 0.06 : 0.12)} 100%)`,
+    "--adaptive-surface-stroke": rgbToCss(clearWhite, clamp(borderAlpha - 0.04, 0.24, 0.48)),
+    "--adaptive-dock-bg": `linear-gradient(180deg, ${rgbToCss(frostedTop, clamp(topAlpha - 0.03, 0.16, 0.42))}, ${rgbToCss(frostedBottom, clamp(bottomAlpha - 0.02, 0.08, 0.2))})`,
+    "--adaptive-dock-shadow": isTransparentStyle ? "0 16px 30px rgba(17, 22, 33, 0.06), 0 6px 14px rgba(17, 22, 33, 0.03), inset 0 1px 0 rgba(255, 255, 255, 0.72)" : "0 20px 40px rgba(17, 22, 33, 0.09), 0 8px 20px rgba(17, 22, 33, 0.05), inset 0 1px 0 rgba(255, 255, 255, 0.84), inset 0 -1px 0 rgba(160, 177, 205, 0.16)",
+    "--adaptive-chip-active-bg": rgbToCss(clearWhite, clamp(buttonFillAlpha + 0.08, 0.18, 0.34)),
+    "--adaptive-chip-active-border": rgbToCss(clearWhite, clamp(borderAlpha + 0.02, 0.3, 0.52)),
+    "--adaptive-backdrop-saturate": isTransparentStyle ? "1.14" : "1.24",
     "--adaptive-glass-tint": rgbToCss(frostedTop, tintAlpha),
-    "--adaptive-glass-overlay": `radial-gradient(140% 110% at 18% 0%, ${rgbToCss(accentGlow, isTransparentStyle ? 0.18 : 0.28)}, transparent 34%), radial-gradient(120% 120% at 86% 100%, ${rgbToCss(accentTint, isTransparentStyle ? 0.08 : 0.14)}, transparent 42%), linear-gradient(180deg, rgba(255, 255, 255, ${isTransparentStyle ? "0.34" : "0.68"}), rgba(255, 255, 255, ${isTransparentStyle ? "0.1" : "0.22"}) 42%, rgba(255, 255, 255, 0.05) 78%)`,
+    "--adaptive-glass-overlay": `radial-gradient(136% 88% at 14% 0%, ${rgbToCss(accentGlow, isTransparentStyle ? 0.54 : 0.78)}, transparent 44%), radial-gradient(108% 76% at 90% 100%, ${rgbToCss(accentTint, isTransparentStyle ? 0.08 : 0.14)}, transparent 44%), linear-gradient(180deg, rgba(255, 255, 255, ${isTransparentStyle ? "0.48" : "0.82"}), rgba(255, 255, 255, ${isTransparentStyle ? "0.12" : "0.22"}) 38%, rgba(255, 255, 255, 0.03) 72%, ${rgbToCss(accentTint, isTransparentStyle ? 0.06 : 0.12)} 100%)`,
     "--adaptive-glass-overlay-border": rgbToCss(clearWhite, borderAlpha),
-    "--adaptive-glass-edge-shine": `radial-gradient(130% 78% at 50% -14%, ${rgbToCss(liquidEdge, isTransparentStyle ? 0.46 : 0.7)}, transparent 44%), linear-gradient(180deg, rgba(255, 255, 255, ${isTransparentStyle ? "0.14" : "0.22"}), rgba(255, 255, 255, 0.02) 36%, ${rgbToCss(accentTint, isTransparentStyle ? 0.05 : 0.1)} 100%)`,
-    "--adaptive-glass-shadow": isTransparentStyle ? "0 14px 28px rgba(17, 22, 33, 0.06)" : "0 24px 48px rgba(17, 22, 33, 0.12)",
+    "--adaptive-glass-edge-shine": `radial-gradient(136% 74% at 50% -18%, ${rgbToCss(liquidEdge, isTransparentStyle ? 0.6 : 0.88)}, transparent 48%), linear-gradient(180deg, rgba(255, 255, 255, ${isTransparentStyle ? "0.22" : "0.4"}), rgba(255, 255, 255, 0.06) 30%, rgba(255, 255, 255, 0.02) 56%, ${rgbToCss(accentTint, isTransparentStyle ? 0.06 : 0.14)} 100%)`,
+    "--adaptive-glass-shadow": isTransparentStyle ? "0 18px 34px rgba(17, 22, 33, 0.06), 0 6px 14px rgba(17, 22, 33, 0.03), inset 0 1px 0 rgba(255, 255, 255, 0.72)" : "0 26px 48px rgba(17, 22, 33, 0.1), 0 10px 22px rgba(17, 22, 33, 0.05), inset 0 1px 0 rgba(255, 255, 255, 0.88), inset 0 -1px 0 rgba(165, 182, 214, 0.18)",
     "--adaptive-glass-button-fill": rgbToCss(clearWhite, buttonFillAlpha),
-    "--adaptive-glass-button-border": rgbToCss(clearWhite, clamp(borderAlpha - 0.08, 0.16, 0.34)),
-    "--adaptive-wordmark-shadow": heroNeedsDarkText ? "0 6px 18px rgba(255, 255, 255, 0.36)" : "0 8px 28px rgba(0, 0, 0, 0.22)",
-    "--adaptive-subtitle-shadow": heroNeedsDarkText ? "0 2px 10px rgba(255, 255, 255, 0.3)" : "0 4px 16px rgba(0, 0, 0, 0.18)"
+    "--adaptive-glass-button-border": rgbToCss(clearWhite, clamp(borderAlpha - 0.1, 0.2, 0.38)),
+    "--adaptive-wordmark-shadow": heroNeedsDarkText ? "0 6px 18px rgba(255, 255, 255, 0.38)" : "0 10px 28px rgba(0, 0, 0, 0.24)",
+    "--adaptive-subtitle-shadow": heroNeedsDarkText ? "0 2px 10px rgba(255, 255, 255, 0.3)" : "0 4px 16px rgba(0, 0, 0, 0.2)"
   };
 }
 
