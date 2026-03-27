@@ -29,6 +29,11 @@ const CROP_PRESETS = {
     width: 1179,
     height: 1994,
     copy: "只有上传图片时才会出现。当前 Chrome 模式会按你给的截图可视区域比例裁切，自动避开上下浏览器栏，拖动图片调整位置，再用下面的滑块缩放。"
+  },
+  desktop: {
+    width: 1600,
+    height: 1000,
+    copy: "只有上传图片时才会出现。当前桌面模式会按宽屏新标签页比例裁切，参考桌面 Chrome 的可视区域，拖动图片调整位置，再用下面的滑块缩放。"
   }
 };
 const MAX_WALLPAPER_LENGTH = 1800000;
@@ -347,6 +352,10 @@ const parallaxState = {
 };
 
 function getCropPreset() {
+  if (isDesktopLayout()) {
+    return CROP_PRESETS.desktop;
+  }
+
   return state.browserMode === "chrome" ? CROP_PRESETS.chrome : CROP_PRESETS.default;
 }
 

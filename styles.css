@@ -1712,7 +1712,8 @@ body[data-layout="desktop"] #settings-sheet {
 }
 
 body[data-layout="desktop"] .cropper__phone {
-  width: min(100%, 320px);
+  width: min(100%, 560px);
+  border-radius: 28px;
 }
 
 body[data-layout="desktop"][data-theme="day"] .desktop-link {
