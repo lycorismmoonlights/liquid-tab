@@ -1032,6 +1032,14 @@ body[data-browser-mode="chrome"] .quick-grid {
   -webkit-backdrop-filter: blur(20px) saturate(1.04);
 }
 
+.quick-card--add {
+  display: block;
+  width: 100%;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
 .quick-card__content {
   display: flex;
   align-items: center;
@@ -1428,6 +1436,19 @@ body[data-browser-mode="chrome"] #settings-sheet {
   font-weight: 600;
 }
 
+.sheet-link--button {
+  font: inherit;
+  cursor: pointer;
+}
+
+.sheet-link--add {
+  border-style: dashed;
+}
+
+.sheet-section {
+  margin-top: 18px;
+}
+
 .setting-group + .setting-group {
   margin-top: 18px;
 }
@@ -1518,6 +1539,105 @@ body[data-browser-mode="chrome"] #settings-sheet {
   margin: 18px 0 0;
   color: var(--control-text-secondary);
   line-height: 1.6;
+}
+
+.shortcut-form {
+  display: grid;
+  gap: 12px;
+  margin-top: 12px;
+  padding: 14px;
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.shortcut-field {
+  display: grid;
+  gap: 8px;
+  color: var(--control-text-secondary);
+  font-size: 0.92rem;
+}
+
+.shortcut-input {
+  width: 100%;
+  min-height: 44px;
+  padding: 0 14px;
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--control-text-primary);
+  font: inherit;
+  outline: none;
+}
+
+.shortcut-input::placeholder {
+  color: var(--control-text-muted);
+}
+
+.shortcut-form__actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.shortcut-manager {
+  display: grid;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.shortcut-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: center;
+  padding: 12px 14px;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.shortcut-row__copy {
+  min-width: 0;
+  display: grid;
+  gap: 4px;
+}
+
+.shortcut-row__copy strong,
+.shortcut-row__copy small {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.shortcut-row__copy strong {
+  font-size: 0.98rem;
+}
+
+.shortcut-row__copy small {
+  color: var(--control-text-muted);
+}
+
+.shortcut-row__actions {
+  display: inline-grid;
+  grid-template-columns: repeat(2, auto);
+  gap: 8px;
+}
+
+.shortcut-row__actions .segment {
+  min-height: 38px;
+  padding: 0 14px;
+}
+
+.shortcut-empty {
+  margin: 0;
+  padding: 14px;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: var(--control-text-secondary);
+  line-height: 1.55;
 }
 
 body[data-layout="desktop"]::after {
@@ -1626,6 +1746,11 @@ body[data-layout="desktop"] .quick-card {
   border: 0 !important;
   box-shadow: none !important;
   overflow: visible;
+}
+
+body[data-layout="desktop"] .quick-card--add {
+  background: transparent !important;
+  border: 0 !important;
 }
 
 body[data-layout="desktop"] .quick-card__content {
@@ -1751,6 +1876,17 @@ body[data-theme="day"] #settings-sheet .setting-label {
 
 body[data-theme="day"] #settings-sheet .setting-hint,
 body[data-theme="day"] #settings-sheet .sheet-note {
+  color: rgba(126, 133, 146, 0.86);
+}
+
+body[data-theme="day"] .shortcut-input,
+body[data-theme="day"] .shortcut-row,
+body[data-theme="day"] .shortcut-empty {
+  color: rgba(48, 52, 61, 0.96);
+}
+
+body[data-theme="day"] .shortcut-row__copy small,
+body[data-theme="day"] .shortcut-input::placeholder {
   color: rgba(126, 133, 146, 0.86);
 }
 

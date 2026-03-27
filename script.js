@@ -6,6 +6,7 @@ const STORAGE_KEYS = {
   reduceMotion: "liquid-tab-reduce-motion",
   showRecent: "liquid-tab-show-recent",
   showQuickLinks: "liquid-tab-show-quick-links",
+  quickLinks: "liquid-tab-quick-links",
   wallpaper: "liquid-tab-wallpaper",
   recent: "liquid-tab-recent"
 };
@@ -38,6 +39,13 @@ const CROP_PRESETS = {
 };
 const MAX_WALLPAPER_LENGTH = 1800000;
 const MAX_RECENT_ITEMS = 4;
+const MAX_QUICK_LINKS = 8;
+const DEFAULT_QUICK_LINKS = [
+  { title: "Google", url: "https://www.google.com" },
+  { title: "YouTube", url: "https://www.youtube.com" },
+  { title: "GitHub", url: "https://www.github.com" },
+  { title: "Pixiv", url: "https://www.pixiv.net" }
+];
 const ADAPTIVE_DAY_VARS = [
   "--adaptive-hero-text-primary",
   "--adaptive-hero-text-secondary",
@@ -155,6 +163,12 @@ const PERSISTED_STATE_FIELDS = {
     read: (value) => value !== "false",
     write: (value) => String(value)
   },
+  quickLinks: {
+    storageKey: STORAGE_KEYS.quickLinks,
+    defaultValue: () => cloneQuickLinks(DEFAULT_QUICK_LINKS),
+    read: (value) => parseQuickLinks(value),
+    write: (value) => JSON.stringify(value)
+  },
   wallpaper: {
     storageKey: STORAGE_KEYS.wallpaper,
     defaultValue: "",
@@ -214,6 +228,7 @@ function createInitialState() {
     reduceMotion: readStateField("reduceMotion"),
     showRecent: readStateField("showRecent"),
     showQuickLinks: readStateField("showQuickLinks"),
+    quickLinks: readStateField("quickLinks"),
     wallpaper: readStateField("wallpaper"),
     recent: readStateField("recent")
   };
@@ -279,6 +294,10 @@ const stateStore = {
   },
   clearRecent() {
     this.replaceRecent([]);
+  },
+  replaceQuickLinks(entries) {
+    this.write("quickLinks", entries.slice(0, MAX_QUICK_LINKS));
+    renderQuickLinks();
   }
 };
 
@@ -287,9 +306,10 @@ const searchForm = document.getElementById("search-form");
 const searchInput = document.getElementById("search-input");
 const pasteButton = document.getElementById("paste-button");
 const widgetPicker = document.getElementById("widget-picker");
-const quickGrid = document.querySelector(".quick-grid");
+const quickGrid = document.getElementById("quick-grid");
 const recentShell = document.getElementById("recent-shell");
 const tabsSheet = document.getElementById("tabs-sheet");
+const tabsGrid = document.getElementById("tabs-grid");
 const settingsSheet = document.getElementById("settings-sheet");
 const sheetBackdrop = document.getElementById("sheet-backdrop");
 const motionToggle = document.getElementById("motion-toggle");
@@ -315,6 +335,14 @@ const cropperZoom = document.getElementById("cropper-zoom");
 const cropperCancel = document.getElementById("cropper-cancel");
 const cropperApply = document.getElementById("cropper-apply");
 const cropperCopy = cropper ? cropper.querySelector(".cropper__copy") : null;
+const quickLinkAdd = document.getElementById("quick-link-add");
+const quickLinkForm = document.getElementById("quick-link-form");
+const quickLinkTitle = document.getElementById("quick-link-title");
+const quickLinkUrl = document.getElementById("quick-link-url");
+const quickLinkCancel = document.getElementById("quick-link-cancel");
+const quickLinkSubmit = document.getElementById("quick-link-submit");
+const quickLinkManager = document.getElementById("quick-link-manager");
+const quickLinkMeta = document.getElementById("quick-link-meta");
 const themeColorMeta = document.querySelector('meta[name="theme-color"]');
 
 let liquidLenses = [];
@@ -330,6 +358,7 @@ let wallpaperMessage = "";
 let cropState = null;
 let adaptiveDayAppearanceKey = "";
 let adaptiveDayAppearanceToken = 0;
+let quickLinkEditingIndex = -1;
 let parallaxFrame = 0;
 const parallaxState = {
   targetX: 0,
@@ -392,6 +421,39 @@ function parseRecentEntries(rawValue) {
   }
 }
 
+function cloneQuickLinks(links) {
+  return links.map((link) => ({
+    title: String(link.title || "").trim(),
+    url: String(link.url || "").trim()
+  }));
+}
+
+function parseQuickLinks(rawValue) {
+  if (!rawValue) {
+    return cloneQuickLinks(DEFAULT_QUICK_LINKS);
+  }
+
+  try {
+    const parsed = JSON.parse(rawValue);
+    if (!Array.isArray(parsed)) {
+      return cloneQuickLinks(DEFAULT_QUICK_LINKS);
+    }
+
+    const normalized = parsed
+      .filter((entry) => entry && typeof entry.title === "string" && typeof entry.url === "string")
+      .map((entry) => ({
+        title: entry.title.trim().slice(0, 24),
+        url: normalizeUrl(entry.url.trim())
+      }))
+      .filter((entry) => entry.title && looksLikeUrl(entry.url))
+      .slice(0, MAX_QUICK_LINKS);
+
+    return normalized;
+  } catch (error) {
+    return cloneQuickLinks(DEFAULT_QUICK_LINKS);
+  }
+}
+
 function getHostLabel(url) {
   try {
     const parsedUrl = new URL(url);
@@ -421,6 +483,263 @@ function formatRecentMeta(entry) {
   }
 
   return entry.meta || getHostLabel(entry.url);
+}
+
+function syncQuickLinkBadge() {
+  if (!tabBadge) {
+    return;
+  }
+
+  tabBadge.textContent = String(state.quickLinks.length).padStart(2, "0");
+}
+
+function createQuickLinkCard(link) {
+  const anchor = document.createElement("a");
+  anchor.className = "quick-card glass-shell";
+  anchor.href = link.url;
+  anchor.rel = "noreferrer";
+  anchor.dataset.recentLink = "";
+  anchor.dataset.recentTitle = link.title;
+
+  const lens = document.createElement("div");
+  lens.className = "liquid-lens liquid-lens--card";
+  lens.setAttribute("aria-hidden", "true");
+
+  const content = document.createElement("span");
+  content.className = "quick-card__content glass-content";
+  content.dataset.liquidIgnore = "";
+
+  const icon = document.createElement("span");
+  icon.className = "quick-card__icon";
+  icon.textContent = getInitials(link.title);
+
+  const label = document.createElement("span");
+  label.className = "quick-card__label";
+  label.textContent = link.title;
+
+  content.append(icon, label);
+  anchor.append(lens, content);
+  return anchor;
+}
+
+function createQuickLinkAddCard() {
+  const button = document.createElement("button");
+  button.className = "quick-card quick-card--add glass-shell";
+  button.type = "button";
+  button.id = "quick-link-grid-add";
+  button.setAttribute("aria-label", "新增快捷入口");
+
+  const lens = document.createElement("div");
+  lens.className = "liquid-lens liquid-lens--card";
+  lens.setAttribute("aria-hidden", "true");
+
+  const content = document.createElement("span");
+  content.className = "quick-card__content glass-content";
+  content.dataset.liquidIgnore = "";
+
+  const icon = document.createElement("span");
+  icon.className = "quick-card__icon";
+  icon.textContent = "+";
+
+  const label = document.createElement("span");
+  label.className = "quick-card__label";
+  label.textContent = "添加快捷方式";
+
+  content.append(icon, label);
+  button.append(lens, content);
+  return button;
+}
+
+function createSheetLink(link) {
+  const anchor = document.createElement("a");
+  anchor.className = "sheet-link";
+  anchor.href = link.url;
+  anchor.rel = "noreferrer";
+  anchor.dataset.recentLink = "";
+  anchor.dataset.recentTitle = link.title;
+  anchor.textContent = link.title;
+  return anchor;
+}
+
+function createSheetAddLink() {
+  const button = document.createElement("button");
+  button.className = "sheet-link sheet-link--button sheet-link--add";
+  button.type = "button";
+  button.id = "quick-link-sheet-add";
+  button.textContent = "添加";
+  return button;
+}
+
+function renderQuickLinkManager() {
+  if (!quickLinkManager || !quickLinkMeta) {
+    return;
+  }
+
+  if (quickLinkAdd) {
+    quickLinkAdd.disabled = state.quickLinks.length >= MAX_QUICK_LINKS;
+  }
+
+  quickLinkManager.textContent = "";
+
+  if (!state.quickLinks.length) {
+    const empty = document.createElement("p");
+    empty.className = "shortcut-empty";
+    empty.textContent = "还没有快捷入口，点上面的按钮加一个。";
+    quickLinkManager.appendChild(empty);
+  } else {
+    state.quickLinks.forEach((link, index) => {
+      const row = document.createElement("div");
+      row.className = "shortcut-row";
+
+      const copy = document.createElement("div");
+      copy.className = "shortcut-row__copy";
+
+      const title = document.createElement("strong");
+      title.textContent = link.title;
+
+      const meta = document.createElement("small");
+      meta.textContent = getHostLabel(link.url);
+
+      copy.append(title, meta);
+
+      const actions = document.createElement("div");
+      actions.className = "shortcut-row__actions";
+
+      const editButton = document.createElement("button");
+      editButton.className = "segment";
+      editButton.type = "button";
+      editButton.dataset.shortcutAction = "edit";
+      editButton.dataset.shortcutIndex = String(index);
+      editButton.textContent = "编辑";
+
+      const deleteButton = document.createElement("button");
+      deleteButton.className = "segment";
+      deleteButton.type = "button";
+      deleteButton.dataset.shortcutAction = "delete";
+      deleteButton.dataset.shortcutIndex = String(index);
+      deleteButton.textContent = "删除";
+
+      actions.append(editButton, deleteButton);
+      row.append(copy, actions);
+      quickLinkManager.appendChild(row);
+    });
+  }
+
+  const remaining = Math.max(0, MAX_QUICK_LINKS - state.quickLinks.length);
+  quickLinkMeta.textContent = remaining
+    ? `像 Google 新标签页那样，首页和这里会同步显示你自定义的快捷入口。还可以再添加 ${remaining} 个。`
+    : "快捷入口已经满了。要换新的，先删掉一个再加。";
+}
+
+function renderQuickLinks() {
+  if (!quickGrid || !tabsGrid) {
+    return;
+  }
+
+  quickGrid.textContent = "";
+  tabsGrid.textContent = "";
+
+  state.quickLinks.forEach((link) => {
+    quickGrid.appendChild(createQuickLinkCard(link));
+    tabsGrid.appendChild(createSheetLink(link));
+  });
+
+  if (state.quickLinks.length < MAX_QUICK_LINKS) {
+    quickGrid.appendChild(createQuickLinkAddCard());
+    tabsGrid.appendChild(createSheetAddLink());
+  }
+
+  syncQuickLinkBadge();
+  renderQuickLinkManager();
+}
+
+function closeQuickLinkForm() {
+  quickLinkEditingIndex = -1;
+
+  if (!quickLinkForm || !quickLinkTitle || !quickLinkUrl || !quickLinkAdd || !quickLinkSubmit) {
+    return;
+  }
+
+  quickLinkForm.hidden = true;
+  quickLinkAdd.hidden = false;
+  quickLinkTitle.value = "";
+  quickLinkUrl.value = "";
+  quickLinkSubmit.textContent = "添加入口";
+}
+
+function openQuickLinkForm(index = -1) {
+  if (!quickLinkForm || !quickLinkTitle || !quickLinkUrl || !quickLinkAdd || !quickLinkSubmit) {
+    return;
+  }
+
+  const link = index >= 0 ? state.quickLinks[index] : null;
+  quickLinkEditingIndex = index;
+  quickLinkForm.hidden = false;
+  quickLinkAdd.hidden = true;
+  quickLinkTitle.value = link ? link.title : "";
+  quickLinkUrl.value = link ? link.url.replace(/^https?:\/\//i, "") : "";
+  quickLinkSubmit.textContent = link ? "保存修改" : "添加入口";
+  requestAnimationFrame(() => quickLinkTitle.focus());
+}
+
+function normalizeQuickLinkInput() {
+  const title = quickLinkTitle.value.trim().slice(0, 24);
+  const rawUrl = quickLinkUrl.value.trim();
+
+  if (!title) {
+    throw new Error("给快捷入口起个名字吧。");
+  }
+
+  if (!rawUrl) {
+    throw new Error("还差一个网址。");
+  }
+
+  if (!looksLikeUrl(rawUrl)) {
+    throw new Error("这个网址看起来不太对，试试 `pixiv.net` 这种格式。");
+  }
+
+  return {
+    title,
+    url: normalizeUrl(rawUrl)
+  };
+}
+
+function saveQuickLink(entry) {
+  const nextLinks = state.quickLinks.slice();
+  const duplicateIndex = nextLinks.findIndex((link, index) => index !== quickLinkEditingIndex && link.url === entry.url);
+
+  if (duplicateIndex >= 0) {
+    nextLinks.splice(duplicateIndex, 1);
+    if (quickLinkEditingIndex > duplicateIndex) {
+      quickLinkEditingIndex -= 1;
+    }
+  }
+
+  if (quickLinkEditingIndex >= 0) {
+    nextLinks[quickLinkEditingIndex] = entry;
+  } else {
+    if (nextLinks.length >= MAX_QUICK_LINKS) {
+      throw new Error("快捷入口已经满了，先删掉一个再加吧。");
+    }
+    nextLinks.push(entry);
+  }
+
+  stateStore.replaceQuickLinks(nextLinks);
+  closeQuickLinkForm();
+}
+
+function removeQuickLink(index) {
+  if (index < 0 || index >= state.quickLinks.length) {
+    return;
+  }
+
+  const nextLinks = state.quickLinks.slice();
+  nextLinks.splice(index, 1);
+  stateStore.replaceQuickLinks(nextLinks);
+
+  if (quickLinkEditingIndex === index) {
+    closeQuickLinkForm();
+  }
 }
 
 function syncComponentPicker() {
@@ -1791,6 +2110,8 @@ function closeSheets() {
     setWallpaperMessage("");
   }
 
+  closeQuickLinkForm();
+
   tabsSheet.hidden = true;
   settingsSheet.hidden = true;
   sheetBackdrop.hidden = true;
@@ -1803,10 +2124,17 @@ function openSheet(sheet) {
     setWallpaperMessage("");
   }
 
+  if (sheet !== tabsSheet) {
+    closeQuickLinkForm();
+  }
+
   tabsSheet.hidden = true;
   settingsSheet.hidden = true;
   sheet.hidden = false;
   sheetBackdrop.hidden = false;
+  if (sheet === tabsSheet) {
+    renderQuickLinks();
+  }
   syncParallax();
 }
 
@@ -2323,6 +2651,78 @@ cropperApply.addEventListener("click", async () => {
   }
 });
 
+if (quickGrid) {
+  quickGrid.addEventListener("click", (event) => {
+    const addButton = event.target.closest("#quick-link-grid-add");
+    if (!addButton) {
+      return;
+    }
+
+    openSheet(tabsSheet);
+    openQuickLinkForm();
+  });
+}
+
+if (tabsGrid) {
+  tabsGrid.addEventListener("click", (event) => {
+    const addButton = event.target.closest("#quick-link-sheet-add");
+    if (!addButton) {
+      return;
+    }
+
+    openQuickLinkForm();
+  });
+}
+
+if (quickLinkAdd) {
+  quickLinkAdd.addEventListener("click", () => {
+    openQuickLinkForm();
+  });
+}
+
+if (quickLinkCancel) {
+  quickLinkCancel.addEventListener("click", () => {
+    closeQuickLinkForm();
+  });
+}
+
+if (quickLinkForm) {
+  quickLinkForm.addEventListener("submit", (event) => {
+    event.preventDefault();
+
+    try {
+      saveQuickLink(normalizeQuickLinkInput());
+    } catch (error) {
+      if (quickLinkMeta) {
+        quickLinkMeta.textContent = error.message || "保存快捷入口失败。";
+      }
+    }
+  });
+}
+
+if (quickLinkManager) {
+  quickLinkManager.addEventListener("click", (event) => {
+    const button = event.target.closest("[data-shortcut-action]");
+    if (!button) {
+      return;
+    }
+
+    const index = Number(button.dataset.shortcutIndex);
+    if (!Number.isInteger(index)) {
+      return;
+    }
+
+    if (button.dataset.shortcutAction === "edit") {
+      openQuickLinkForm(index);
+      return;
+    }
+
+    if (button.dataset.shortcutAction === "delete") {
+      removeQuickLink(index);
+    }
+  });
+}
+
 document.getElementById("nav-back").addEventListener("click", () => window.history.back());
 document.getElementById("nav-forward").addEventListener("click", () => window.history.forward());
 document.getElementById("nav-search").addEventListener("click", () => searchInput.focus());
@@ -2426,11 +2826,10 @@ if (systemThemeQuery) {
   }
 }
 
-tabBadge.textContent = String(document.querySelectorAll(".quick-card").length).padStart(2, "0");
-
 handleViewportResize();
 closeCropper();
 applyState();
+renderQuickLinks();
 renderRecentEntries();
 
 const wallpaperReady = restoreWallpaper();
