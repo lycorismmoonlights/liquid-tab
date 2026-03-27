@@ -132,50 +132,53 @@ body[data-theme="day"] {
   color-scheme: light;
   --text-secondary: rgba(245, 245, 248, 0.76);
   --text-muted: rgba(203, 212, 228, 0.56);
-  --control-text-primary: rgba(255, 255, 255, 0.96);
-  --control-text-secondary: rgba(245, 247, 252, 0.8);
-  --control-text-muted: rgba(233, 238, 246, 0.66);
-  --surface-border: rgba(255, 255, 255, 0.28);
-  --surface-shadow: 0 12px 24px rgba(17, 22, 33, 0.08);
-  --surface-bg: linear-gradient(180deg, rgba(255, 255, 255, 0.9), rgba(248, 249, 252, 0.82));
-  --surface-highlight: linear-gradient(180deg, rgba(255, 255, 255, 0.38), rgba(255, 255, 255, 0.12) 44%, rgba(245, 245, 247, 0.06));
-  --surface-stroke: rgba(255, 255, 255, 0.24);
-  --dock-bg: linear-gradient(180deg, rgba(255, 255, 255, 0.9), rgba(248, 249, 252, 0.8));
-  --dock-shadow: 0 12px 24px rgba(17, 22, 33, 0.08);
+  --hero-text-primary: var(--adaptive-hero-text-primary, rgba(255, 255, 255, 0.98));
+  --hero-text-secondary: var(--adaptive-hero-text-secondary, rgba(244, 246, 251, 0.84));
+  --hero-eyebrow-color: var(--adaptive-hero-eyebrow-color, rgba(255, 243, 224, 0.62));
+  --control-text-primary: var(--adaptive-control-text-primary, rgba(40, 46, 58, 0.94));
+  --control-text-secondary: var(--adaptive-control-text-secondary, rgba(88, 96, 111, 0.84));
+  --control-text-muted: var(--adaptive-control-text-muted, rgba(112, 121, 138, 0.72));
+  --surface-border: var(--adaptive-surface-border, rgba(255, 255, 255, 0.42));
+  --surface-shadow: var(--adaptive-surface-shadow, 0 18px 36px rgba(17, 22, 33, 0.1));
+  --surface-bg: var(--adaptive-surface-bg, linear-gradient(180deg, rgba(255, 255, 255, 0.56), rgba(247, 249, 252, 0.3)));
+  --surface-highlight: var(--adaptive-surface-highlight, linear-gradient(180deg, rgba(255, 255, 255, 0.62), rgba(255, 255, 255, 0.16) 42%, rgba(255, 255, 255, 0.05) 76%));
+  --surface-stroke: var(--adaptive-surface-stroke, rgba(255, 255, 255, 0.32));
+  --dock-bg: var(--adaptive-dock-bg, linear-gradient(180deg, rgba(255, 255, 255, 0.52), rgba(246, 248, 252, 0.28)));
+  --dock-shadow: var(--adaptive-dock-shadow, 0 16px 34px rgba(17, 22, 33, 0.09));
   --accent: #c2cad8;
   --accent-soft: #d9deea;
-  --chip-active-bg: rgba(255, 255, 255, 0.56);
-  --chip-active-border: rgba(255, 255, 255, 0.4);
-  --backdrop-saturate: 1;
-  --glass-tint: rgba(255, 255, 255, 0.72);
-  --glass-overlay: linear-gradient(180deg, rgba(255, 255, 255, 0.4), rgba(255, 255, 255, 0.12) 44%, rgba(245, 245, 247, 0.06));
-  --glass-overlay-border: rgba(255, 255, 255, 0.24);
-  --glass-edge-shine: radial-gradient(130% 76% at 50% -14%, rgba(255, 255, 255, 0.54), transparent 46%), linear-gradient(180deg, rgba(255, 255, 255, 0.16), rgba(255, 255, 255, 0) 34%, rgba(177, 184, 199, 0.06) 100%);
-  --glass-shadow: 0 16px 30px rgba(17, 22, 33, 0.08);
-  --glass-button-fill: rgba(255, 255, 255, 0.3);
-  --glass-button-border: rgba(255, 255, 255, 0.22);
+  --chip-active-bg: var(--adaptive-chip-active-bg, rgba(255, 255, 255, 0.42));
+  --chip-active-border: var(--adaptive-chip-active-border, rgba(255, 255, 255, 0.42));
+  --backdrop-saturate: var(--adaptive-backdrop-saturate, 1.18);
+  --glass-tint: var(--adaptive-glass-tint, rgba(255, 255, 255, 0.42));
+  --glass-overlay: var(--adaptive-glass-overlay, radial-gradient(140% 110% at 18% 0%, rgba(255, 255, 255, 0.34), transparent 34%), linear-gradient(180deg, rgba(255, 255, 255, 0.62), rgba(255, 255, 255, 0.18) 42%, rgba(255, 255, 255, 0.05) 78%));
+  --glass-overlay-border: var(--adaptive-glass-overlay-border, rgba(255, 255, 255, 0.44));
+  --glass-edge-shine: var(--adaptive-glass-edge-shine, radial-gradient(130% 78% at 50% -14%, rgba(255, 255, 255, 0.72), transparent 44%), linear-gradient(180deg, rgba(255, 255, 255, 0.22), rgba(255, 255, 255, 0.02) 36%, rgba(147, 161, 189, 0.08) 100%));
+  --glass-shadow: var(--adaptive-glass-shadow, 0 22px 46px rgba(17, 22, 33, 0.12));
+  --glass-button-fill: var(--adaptive-glass-button-fill, rgba(255, 255, 255, 0.26));
+  --glass-button-border: var(--adaptive-glass-button-border, rgba(255, 255, 255, 0.34));
   --sheet-bg: linear-gradient(180deg, rgba(244, 247, 252, 0.82), rgba(231, 238, 246, 0.86));
-  --eyebrow-color: rgba(255, 236, 209, 0.52);
-  --recent-eyebrow-color: rgba(147, 131, 112, 0.56);
-  --search-placeholder: rgba(244, 246, 251, 0.72);
+  --eyebrow-color: var(--adaptive-hero-eyebrow-color, rgba(255, 243, 224, 0.62));
+  --recent-eyebrow-color: var(--adaptive-recent-eyebrow-color, rgba(126, 118, 108, 0.68));
+  --search-placeholder: var(--adaptive-search-placeholder, rgba(115, 124, 140, 0.82));
 }
 
 body[data-theme="day"][data-style="transparent"] {
-  --surface-bg: linear-gradient(180deg, rgba(255, 255, 255, 0.62), rgba(255, 255, 255, 0.42));
-  --surface-highlight: linear-gradient(180deg, rgba(255, 255, 255, 0.18), rgba(255, 255, 255, 0.05) 46%, rgba(255, 255, 255, 0.05));
-  --surface-stroke: rgba(255, 255, 255, 0.2);
-  --dock-bg: linear-gradient(180deg, rgba(255, 255, 255, 0.58), rgba(255, 255, 255, 0.36));
-  --dock-shadow: 0 12px 22px rgba(17, 22, 33, 0.06);
-  --chip-active-bg: rgba(255, 255, 255, 0.42);
-  --chip-active-border: rgba(255, 255, 255, 0.3);
-  --backdrop-saturate: 1;
-  --glass-tint: rgba(255, 255, 255, 0.5);
-  --glass-overlay: linear-gradient(180deg, rgba(255, 255, 255, 0.18), rgba(255, 255, 255, 0.04) 46%, rgba(255, 255, 255, 0.04));
-  --glass-overlay-border: rgba(255, 255, 255, 0.14);
-  --glass-edge-shine: radial-gradient(130% 76% at 50% -14%, rgba(255, 255, 255, 0.38), transparent 44%), linear-gradient(180deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0) 34%, rgba(177, 184, 199, 0.04) 100%);
-  --glass-shadow: 0 14px 26px rgba(17, 22, 33, 0.06);
-  --glass-button-fill: rgba(255, 255, 255, 0.24);
-  --glass-button-border: rgba(255, 255, 255, 0.16);
+  --surface-bg: var(--adaptive-surface-bg, linear-gradient(180deg, rgba(255, 255, 255, 0.38), rgba(255, 255, 255, 0.18)));
+  --surface-highlight: var(--adaptive-surface-highlight, linear-gradient(180deg, rgba(255, 255, 255, 0.3), rgba(255, 255, 255, 0.08) 46%, rgba(255, 255, 255, 0.04)));
+  --surface-stroke: var(--adaptive-surface-stroke, rgba(255, 255, 255, 0.18));
+  --dock-bg: var(--adaptive-dock-bg, linear-gradient(180deg, rgba(255, 255, 255, 0.34), rgba(255, 255, 255, 0.16)));
+  --dock-shadow: var(--adaptive-dock-shadow, 0 12px 22px rgba(17, 22, 33, 0.06));
+  --chip-active-bg: var(--adaptive-chip-active-bg, rgba(255, 255, 255, 0.3));
+  --chip-active-border: var(--adaptive-chip-active-border, rgba(255, 255, 255, 0.24));
+  --backdrop-saturate: var(--adaptive-backdrop-saturate, 1.08);
+  --glass-tint: var(--adaptive-glass-tint, rgba(255, 255, 255, 0.28));
+  --glass-overlay: var(--adaptive-glass-overlay, radial-gradient(140% 110% at 18% 0%, rgba(255, 255, 255, 0.22), transparent 34%), linear-gradient(180deg, rgba(255, 255, 255, 0.32), rgba(255, 255, 255, 0.08) 46%, rgba(255, 255, 255, 0.04)));
+  --glass-overlay-border: var(--adaptive-glass-overlay-border, rgba(255, 255, 255, 0.22));
+  --glass-edge-shine: var(--adaptive-glass-edge-shine, radial-gradient(130% 76% at 50% -14%, rgba(255, 255, 255, 0.48), transparent 44%), linear-gradient(180deg, rgba(255, 255, 255, 0.14), rgba(255, 255, 255, 0) 34%, rgba(177, 184, 199, 0.04) 100%));
+  --glass-shadow: var(--adaptive-glass-shadow, 0 14px 26px rgba(17, 22, 33, 0.06));
+  --glass-button-fill: var(--adaptive-glass-button-fill, rgba(255, 255, 255, 0.18));
+  --glass-button-border: var(--adaptive-glass-button-border, rgba(255, 255, 255, 0.14));
 }
 
 * {
@@ -530,7 +533,7 @@ body[data-browser-mode="chrome"] .hero {
   font-family: var(--font-display);
   font-weight: 600;
   color: var(--hero-text-primary);
-  text-shadow: 0 8px 28px rgba(0, 0, 0, 0.16);
+  text-shadow: var(--adaptive-wordmark-shadow, 0 8px 28px rgba(0, 0, 0, 0.16));
 }
 
 .subtitle {
@@ -539,7 +542,7 @@ body[data-browser-mode="chrome"] .hero {
   font-size: 1rem;
   line-height: 1.55;
   color: var(--hero-text-secondary);
-  text-shadow: 0 3px 14px rgba(0, 0, 0, 0.14);
+  text-shadow: var(--adaptive-subtitle-shadow, 0 3px 14px rgba(0, 0, 0, 0.14));
 }
 
 body[data-browser-mode="chrome"] .wordmark {

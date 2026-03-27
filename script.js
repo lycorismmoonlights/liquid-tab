@@ -33,6 +33,40 @@ const CROP_PRESETS = {
 };
 const MAX_WALLPAPER_LENGTH = 1800000;
 const MAX_RECENT_ITEMS = 4;
+const ADAPTIVE_DAY_VARS = [
+  "--adaptive-hero-text-primary",
+  "--adaptive-hero-text-secondary",
+  "--adaptive-hero-eyebrow-color",
+  "--adaptive-control-text-primary",
+  "--adaptive-control-text-secondary",
+  "--adaptive-control-text-muted",
+  "--adaptive-recent-eyebrow-color",
+  "--adaptive-search-placeholder",
+  "--adaptive-surface-border",
+  "--adaptive-surface-shadow",
+  "--adaptive-surface-bg",
+  "--adaptive-surface-highlight",
+  "--adaptive-surface-stroke",
+  "--adaptive-dock-bg",
+  "--adaptive-dock-shadow",
+  "--adaptive-chip-active-bg",
+  "--adaptive-chip-active-border",
+  "--adaptive-backdrop-saturate",
+  "--adaptive-glass-tint",
+  "--adaptive-glass-overlay",
+  "--adaptive-glass-overlay-border",
+  "--adaptive-glass-edge-shine",
+  "--adaptive-glass-shadow",
+  "--adaptive-glass-button-fill",
+  "--adaptive-glass-button-border",
+  "--adaptive-wordmark-shadow",
+  "--adaptive-subtitle-shadow"
+];
+const ADAPTIVE_DAY_SAMPLE_ZONES = {
+  hero: { x: 0.18, y: 0.06, width: 0.64, height: 0.24 },
+  panel: { x: 0.08, y: 0.28, width: 0.84, height: 0.46 },
+  overall: { x: 0, y: 0, width: 1, height: 1 }
+};
 
 function detectBrowserMode() {
   const ua = navigator.userAgent || "";
@@ -289,6 +323,8 @@ let trueGlassRealtimeFrame = 0;
 let wallpaperBusy = false;
 let wallpaperMessage = "";
 let cropState = null;
+let adaptiveDayAppearanceKey = "";
+let adaptiveDayAppearanceToken = 0;
 let parallaxFrame = 0;
 const parallaxState = {
   targetX: 0,
@@ -508,6 +544,215 @@ function syncViewportHeight() {
 
 function clamp(value, min, max) {
   return Math.min(max, Math.max(min, value));
+}
+
+function mixRgb(colorA, colorB, amount) {
+  return {
+    r: Math.round(colorA.r + (colorB.r - colorA.r) * amount),
+    g: Math.round(colorA.g + (colorB.g - colorA.g) * amount),
+    b: Math.round(colorA.b + (colorB.b - colorA.b) * amount)
+  };
+}
+
+function rgbToCss(color, alpha = 1) {
+  return `rgba(${color.r}, ${color.g}, ${color.b}, ${alpha.toFixed(3)})`;
+}
+
+function getRelativeLuminance(color) {
+  const linearize = (channel) => {
+    const value = channel / 255;
+    return value <= 0.04045 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4;
+  };
+
+  const red = linearize(color.r);
+  const green = linearize(color.g);
+  const blue = linearize(color.b);
+  return 0.2126 * red + 0.7152 * green + 0.0722 * blue;
+}
+
+function getColorSaturation(color) {
+  const red = color.r / 255;
+  const green = color.g / 255;
+  const blue = color.b / 255;
+  const maxValue = Math.max(red, green, blue);
+  const minValue = Math.min(red, green, blue);
+
+  if (maxValue === 0) {
+    return 0;
+  }
+
+  return (maxValue - minValue) / maxValue;
+}
+
+function sampleImageRegion(context, width, height, region) {
+  const x = clamp(Math.floor(region.x * width), 0, width - 1);
+  const y = clamp(Math.floor(region.y * height), 0, height - 1);
+  const sampleWidth = clamp(Math.floor(region.width * width), 1, width - x);
+  const sampleHeight = clamp(Math.floor(region.height * height), 1, height - y);
+  const data = context.getImageData(x, y, sampleWidth, sampleHeight).data;
+
+  let red = 0;
+  let green = 0;
+  let blue = 0;
+  let luminance = 0;
+  let saturation = 0;
+  let count = 0;
+
+  for (let index = 0; index < data.length; index += 4) {
+    const alpha = data[index + 3];
+    if (alpha < 16) {
+      continue;
+    }
+
+    const color = {
+      r: data[index],
+      g: data[index + 1],
+      b: data[index + 2]
+    };
+
+    red += color.r;
+    green += color.g;
+    blue += color.b;
+    luminance += getRelativeLuminance(color);
+    saturation += getColorSaturation(color);
+    count += 1;
+  }
+
+  if (!count) {
+    return {
+      rgb: { r: 255, g: 255, b: 255 },
+      luminance: 1,
+      saturation: 0
+    };
+  }
+
+  return {
+    rgb: {
+      r: Math.round(red / count),
+      g: Math.round(green / count),
+      b: Math.round(blue / count)
+    },
+    luminance: luminance / count,
+    saturation: saturation / count
+  };
+}
+
+function clearAdaptiveDayAppearance() {
+  ADAPTIVE_DAY_VARS.forEach((variable) => {
+    body.style.removeProperty(variable);
+  });
+  adaptiveDayAppearanceKey = "";
+}
+
+function applyAdaptiveDayAppearance(palette) {
+  Object.entries(palette).forEach(([variable, value]) => {
+    body.style.setProperty(variable, value);
+  });
+}
+
+function buildAdaptiveDayPalette(image) {
+  const sampleCanvas = document.createElement("canvas");
+  const sampleSize = 96;
+  sampleCanvas.width = sampleSize;
+  sampleCanvas.height = sampleSize;
+
+  const context = sampleCanvas.getContext("2d", { alpha: false, willReadFrequently: true });
+  context.drawImage(image, 0, 0, sampleSize, sampleSize);
+
+  const heroSample = sampleImageRegion(context, sampleSize, sampleSize, ADAPTIVE_DAY_SAMPLE_ZONES.hero);
+  const panelSample = sampleImageRegion(context, sampleSize, sampleSize, ADAPTIVE_DAY_SAMPLE_ZONES.panel);
+  const overallSample = sampleImageRegion(context, sampleSize, sampleSize, ADAPTIVE_DAY_SAMPLE_ZONES.overall);
+
+  const isTransparentStyle = state.style === "transparent";
+  const paperWhite = { r: 248, g: 250, b: 255 };
+  const clearWhite = { r: 255, g: 255, b: 255 };
+  const deepInk = { r: 35, g: 43, b: 57 };
+  const mediumInk = { r: 82, g: 92, b: 110 };
+  const softInk = { r: 114, g: 123, b: 140 };
+  const placeholderInk = { r: 126, g: 136, b: 152 };
+
+  const heroNeedsDarkText = heroSample.luminance > 0.52;
+  const accentTint = mixRgb(overallSample.rgb, paperWhite, 0.72);
+  const accentGlow = mixRgb(panelSample.rgb, clearWhite, 0.58);
+  const liquidEdge = mixRgb(heroSample.rgb, clearWhite, 0.66);
+  const frostedTop = mixRgb(panelSample.rgb, paperWhite, 0.9);
+  const frostedBottom = mixRgb(panelSample.rgb, paperWhite, 0.78);
+
+  const topAlphaBase = isTransparentStyle ? 0.38 : 0.58;
+  const bottomAlphaBase = isTransparentStyle ? 0.18 : 0.34;
+  const tintAlphaBase = isTransparentStyle ? 0.22 : 0.34;
+  const brightnessBoost = overallSample.luminance > 0.66 ? 0.06 : overallSample.luminance < 0.34 ? -0.03 : 0;
+  const saturationBoost = overallSample.saturation > 0.42 ? 0.04 : 0;
+
+  const topAlpha = clamp(topAlphaBase + brightnessBoost, isTransparentStyle ? 0.28 : 0.46, isTransparentStyle ? 0.48 : 0.66);
+  const bottomAlpha = clamp(bottomAlphaBase + brightnessBoost * 0.6, isTransparentStyle ? 0.12 : 0.22, isTransparentStyle ? 0.3 : 0.42);
+  const tintAlpha = clamp(tintAlphaBase + brightnessBoost + saturationBoost, isTransparentStyle ? 0.18 : 0.28, isTransparentStyle ? 0.32 : 0.46);
+  const borderAlpha = clamp(0.28 + brightnessBoost * 0.8 + saturationBoost * 0.5, 0.24, 0.48);
+  const buttonFillAlpha = clamp((isTransparentStyle ? 0.16 : 0.24) + brightnessBoost * 0.6, 0.14, 0.3);
+
+  return {
+    "--adaptive-hero-text-primary": heroNeedsDarkText ? rgbToCss(mixRgb(heroSample.rgb, deepInk, 0.88), 0.96) : "rgba(255, 255, 255, 0.98)",
+    "--adaptive-hero-text-secondary": heroNeedsDarkText ? rgbToCss(mixRgb(heroSample.rgb, mediumInk, 0.84), 0.88) : "rgba(246, 248, 252, 0.88)",
+    "--adaptive-hero-eyebrow-color": heroNeedsDarkText ? rgbToCss(mixRgb(heroSample.rgb, softInk, 0.82), 0.78) : "rgba(255, 245, 232, 0.74)",
+    "--adaptive-control-text-primary": rgbToCss(mixRgb(panelSample.rgb, deepInk, 0.9), 0.94),
+    "--adaptive-control-text-secondary": rgbToCss(mixRgb(panelSample.rgb, mediumInk, 0.86), 0.84),
+    "--adaptive-control-text-muted": rgbToCss(mixRgb(panelSample.rgb, softInk, 0.84), 0.74),
+    "--adaptive-recent-eyebrow-color": rgbToCss(mixRgb(panelSample.rgb, mediumInk, 0.82), 0.66),
+    "--adaptive-search-placeholder": rgbToCss(mixRgb(panelSample.rgb, placeholderInk, 0.82), 0.82),
+    "--adaptive-surface-border": rgbToCss(clearWhite, borderAlpha),
+    "--adaptive-surface-shadow": isTransparentStyle ? "0 16px 28px rgba(17, 22, 33, 0.08)" : "0 20px 42px rgba(17, 22, 33, 0.12)",
+    "--adaptive-surface-bg": `linear-gradient(180deg, ${rgbToCss(frostedTop, topAlpha)}, ${rgbToCss(frostedBottom, bottomAlpha)})`,
+    "--adaptive-surface-highlight": `radial-gradient(140% 110% at 18% 0%, ${rgbToCss(accentGlow, isTransparentStyle ? 0.2 : 0.28)}, transparent 34%), linear-gradient(180deg, rgba(255, 255, 255, ${isTransparentStyle ? "0.34" : "0.64"}), rgba(255, 255, 255, ${isTransparentStyle ? "0.08" : "0.18"}) 42%, rgba(255, 255, 255, 0.05) 78%)`,
+    "--adaptive-surface-stroke": rgbToCss(clearWhite, clamp(borderAlpha - 0.06, 0.18, 0.42)),
+    "--adaptive-dock-bg": `linear-gradient(180deg, ${rgbToCss(frostedTop, clamp(topAlpha - 0.04, 0.24, 0.58))}, ${rgbToCss(frostedBottom, clamp(bottomAlpha - 0.03, 0.12, 0.34))})`,
+    "--adaptive-dock-shadow": isTransparentStyle ? "0 14px 26px rgba(17, 22, 33, 0.06)" : "0 18px 38px rgba(17, 22, 33, 0.1)",
+    "--adaptive-chip-active-bg": rgbToCss(clearWhite, clamp(buttonFillAlpha + 0.08, 0.22, 0.42)),
+    "--adaptive-chip-active-border": rgbToCss(clearWhite, clamp(borderAlpha + 0.02, 0.26, 0.48)),
+    "--adaptive-backdrop-saturate": isTransparentStyle ? "1.08" : "1.18",
+    "--adaptive-glass-tint": rgbToCss(frostedTop, tintAlpha),
+    "--adaptive-glass-overlay": `radial-gradient(140% 110% at 18% 0%, ${rgbToCss(accentGlow, isTransparentStyle ? 0.18 : 0.28)}, transparent 34%), radial-gradient(120% 120% at 86% 100%, ${rgbToCss(accentTint, isTransparentStyle ? 0.08 : 0.14)}, transparent 42%), linear-gradient(180deg, rgba(255, 255, 255, ${isTransparentStyle ? "0.34" : "0.68"}), rgba(255, 255, 255, ${isTransparentStyle ? "0.1" : "0.22"}) 42%, rgba(255, 255, 255, 0.05) 78%)`,
+    "--adaptive-glass-overlay-border": rgbToCss(clearWhite, borderAlpha),
+    "--adaptive-glass-edge-shine": `radial-gradient(130% 78% at 50% -14%, ${rgbToCss(liquidEdge, isTransparentStyle ? 0.46 : 0.7)}, transparent 44%), linear-gradient(180deg, rgba(255, 255, 255, ${isTransparentStyle ? "0.14" : "0.22"}), rgba(255, 255, 255, 0.02) 36%, ${rgbToCss(accentTint, isTransparentStyle ? 0.05 : 0.1)} 100%)`,
+    "--adaptive-glass-shadow": isTransparentStyle ? "0 14px 28px rgba(17, 22, 33, 0.06)" : "0 24px 48px rgba(17, 22, 33, 0.12)",
+    "--adaptive-glass-button-fill": rgbToCss(clearWhite, buttonFillAlpha),
+    "--adaptive-glass-button-border": rgbToCss(clearWhite, clamp(borderAlpha - 0.08, 0.16, 0.34)),
+    "--adaptive-wordmark-shadow": heroNeedsDarkText ? "0 6px 18px rgba(255, 255, 255, 0.36)" : "0 8px 28px rgba(0, 0, 0, 0.22)",
+    "--adaptive-subtitle-shadow": heroNeedsDarkText ? "0 2px 10px rgba(255, 255, 255, 0.3)" : "0 4px 16px rgba(0, 0, 0, 0.18)"
+  };
+}
+
+function syncAdaptiveDayAppearance() {
+  if (!state.wallpaper) {
+    adaptiveDayAppearanceToken += 1;
+    clearAdaptiveDayAppearance();
+    return;
+  }
+
+  const nextKey = `${state.style}:${state.wallpaper.length}:${state.wallpaper.slice(0, 48)}`;
+  if (adaptiveDayAppearanceKey === nextKey) {
+    return;
+  }
+
+  adaptiveDayAppearanceToken += 1;
+  const token = adaptiveDayAppearanceToken;
+
+  loadImage(state.wallpaper)
+    .then((image) => {
+      if (token !== adaptiveDayAppearanceToken) {
+        return;
+      }
+
+      applyAdaptiveDayAppearance(buildAdaptiveDayPalette(image));
+      adaptiveDayAppearanceKey = nextKey;
+    })
+    .catch((error) => {
+      if (token !== adaptiveDayAppearanceToken) {
+        return;
+      }
+
+      console.warn("Adaptive wallpaper analysis failed.", error);
+      clearAdaptiveDayAppearance();
+    });
 }
 
 function resolveLayoutMode() {
@@ -945,6 +1190,7 @@ function applyState() {
 
   syncComponentPicker();
   syncThemeColor();
+  syncAdaptiveDayAppearance();
   syncCropperPreset();
   syncCropLayout(true);
   syncWallpaperControls();
@@ -1785,6 +2031,7 @@ async function renderWallpaper(dataUrl) {
   if (!dataUrl) {
     wallpaperLayer.style.backgroundImage = "none";
     body.classList.remove("has-custom-wallpaper");
+    clearAdaptiveDayAppearance();
     refreshLiquidGlassSnapshot();
     return;
   }
@@ -1792,6 +2039,8 @@ async function renderWallpaper(dataUrl) {
   await loadImage(dataUrl);
   wallpaperLayer.style.backgroundImage = `url("${dataUrl}")`;
   body.classList.add("has-custom-wallpaper");
+  adaptiveDayAppearanceKey = "";
+  syncAdaptiveDayAppearance();
   refreshLiquidGlassSnapshot();
 }
 
