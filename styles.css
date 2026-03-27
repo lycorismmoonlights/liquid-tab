@@ -1404,6 +1404,16 @@ body[data-browser-mode="chrome"] #settings-sheet {
   cursor: default;
 }
 
+.action-card {
+  width: 100%;
+  min-height: 48px;
+  border-radius: 18px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--control-text-primary);
+  font-weight: 600;
+}
+
 .toggle-row {
   display: flex;
   align-items: center;
@@ -1654,7 +1664,8 @@ body[data-theme="day"] #settings-sheet {
 
 body[data-theme="day"] #settings-sheet .sheet__title,
 body[data-theme="day"] #settings-sheet .segment,
-body[data-theme="day"] #settings-sheet .sheet-link {
+body[data-theme="day"] #settings-sheet .sheet-link,
+body[data-theme="day"] #settings-sheet .action-card {
   color: rgba(48, 52, 61, 0.96);
 }
 

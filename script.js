@@ -68,6 +68,8 @@ const tabBadge = document.getElementById("tab-badge");
 const desktopTabs = document.getElementById("desktop-tabs");
 const desktopSettings = document.getElementById("desktop-settings");
 const desktopCustomize = document.getElementById("desktop-customize");
+const parallaxEnable = document.getElementById("parallax-enable");
+const parallaxStatus = document.getElementById("parallax-status");
 const wallpaperLayer = document.getElementById("wallpaper-layer");
 const wallpaperInput = document.getElementById("wallpaper-input");
 const wallpaperUpload = document.getElementById("wallpaper-upload");
@@ -109,6 +111,7 @@ const parallaxState = {
   baseMotionY: null,
   deviceActive: false,
   sensorSource: "",
+  status: "idle",
   orientationAttached: false,
   motionAttached: false,
   permissionRequested: false,
@@ -344,6 +347,55 @@ function hasActiveOverlay() {
   return !tabsSheet.hidden || !settingsSheet.hidden || !cropper.hidden;
 }
 
+function syncParallaxControls() {
+  if (!parallaxEnable || !parallaxStatus) {
+    return;
+  }
+
+  if (isDesktopLayout()) {
+    parallaxEnable.disabled = false;
+    parallaxEnable.textContent = "重置桌面景深";
+    parallaxStatus.textContent = "电脑端默认使用鼠标景深，不需要传感器授权。";
+    return;
+  }
+
+  if (!hasSensorSupport()) {
+    parallaxEnable.disabled = true;
+    parallaxEnable.textContent = "当前不可用";
+    parallaxStatus.textContent = "当前浏览器不支持运动传感器，所以没法启用重力景深。";
+    return;
+  }
+
+  parallaxEnable.disabled = false;
+
+  if (state.reduceMotion) {
+    parallaxEnable.textContent = "启用景深";
+    parallaxStatus.textContent = "当前已开启“降低动态效果”。点一下会先关闭它，再请求运动与方向权限。";
+    return;
+  }
+
+  if (parallaxState.status === "pending") {
+    parallaxEnable.textContent = "正在请求权限...";
+    parallaxStatus.textContent = "等系统权限弹窗出现并点允许，然后回到首页轻轻倾斜手机。";
+    return;
+  }
+
+  if (parallaxState.orientationAttached || parallaxState.motionAttached) {
+    parallaxEnable.textContent = "重新校准景深";
+    parallaxStatus.textContent = "景深已启用。点一下可以重置基准，然后回到首页轻轻倾斜手机试试。";
+    return;
+  }
+
+  if (parallaxState.status === "denied") {
+    parallaxEnable.textContent = "重新请求权限";
+    parallaxStatus.textContent = "刚才没有拿到权限。再点一次试试；如果仍然没弹窗，请检查系统里 Safari 的“运动与方向访问”。";
+    return;
+  }
+
+  parallaxEnable.textContent = "启用景深";
+  parallaxStatus.textContent = "点一下这里，系统会请求运动与方向访问权限。";
+}
+
 function canUseParallax() {
   return !state.reduceMotion && !hasActiveOverlay() && document.visibilityState !== "hidden";
 }
@@ -421,6 +473,7 @@ function resetParallaxBaseline() {
   parallaxState.baseMotionX = null;
   parallaxState.baseMotionY = null;
   parallaxState.sensorSource = "";
+  syncParallaxControls();
 }
 
 function handlePointerParallax(event) {
@@ -477,6 +530,8 @@ function attachDeviceOrientation() {
 
   window.addEventListener("deviceorientation", handleDeviceOrientation, { passive: true });
   parallaxState.orientationAttached = true;
+  parallaxState.status = "granted";
+  syncParallaxControls();
 }
 
 function handleDeviceMotion(event) {
@@ -508,6 +563,8 @@ function attachDeviceMotion() {
 
   window.addEventListener("devicemotion", handleDeviceMotion, { passive: true });
   parallaxState.motionAttached = true;
+  parallaxState.status = "granted";
+  syncParallaxControls();
 }
 
 function getPermissionRequester(eventType) {
@@ -519,22 +576,27 @@ function getPermissionRequester(eventType) {
   return () => constructor.requestPermission();
 }
 
-function requestMotionPermission() {
-  if (parallaxState.permissionRequested || !hasSensorSupport()) {
-    return;
+function requestMotionPermission(force = false) {
+  if ((parallaxState.permissionRequested && !force) || !hasSensorSupport()) {
+    return Promise.resolve(false);
   }
 
   parallaxState.permissionRequested = true;
+  parallaxState.status = "pending";
+  syncParallaxControls();
   const requestMotion = getPermissionRequester("motion");
   const requestOrientation = getPermissionRequester("orientation");
 
   if (!requestMotion && !requestOrientation) {
     attachDeviceMotion();
     attachDeviceOrientation();
-    return;
+    parallaxState.permissionRequested = false;
+    parallaxState.status = "granted";
+    syncParallaxControls();
+    return Promise.resolve(true);
   }
 
-  Promise.allSettled([
+  return Promise.allSettled([
     requestMotion ? requestMotion() : Promise.resolve("granted"),
     requestOrientation ? requestOrientation() : Promise.resolve("granted")
   ])
@@ -550,13 +612,24 @@ function requestMotionPermission() {
         attachDeviceOrientation();
       }
 
-      if (!motionGranted && !orientationGranted && requestMotion && requestOrientation) {
-        parallaxState.permissionRequested = false;
+      parallaxState.permissionRequested = false;
+
+      if (parallaxState.motionAttached || parallaxState.orientationAttached) {
+        parallaxState.status = "granted";
+        syncParallaxControls();
+        return true;
       }
+
+      parallaxState.status = "denied";
+      syncParallaxControls();
+      return false;
     })
     .catch((error) => {
       parallaxState.permissionRequested = false;
+      parallaxState.status = "denied";
+      syncParallaxControls();
       console.warn("Motion permission request failed.", error);
+      return false;
     });
 }
 
@@ -621,9 +694,11 @@ function syncParallax() {
 
   if (!canUseParallax()) {
     resetParallaxTarget();
+    syncParallaxControls();
     return;
   }
 
+  syncParallaxControls();
   queueParallaxFrame();
 }
 
@@ -696,6 +771,7 @@ function applyState() {
   syncWallpaperControls();
   syncLiquidGlass();
   syncParallax();
+  syncParallaxControls();
 }
 
 function getTrueGlassControls() {
@@ -1821,6 +1897,28 @@ if (desktopSettings) {
 }
 if (desktopCustomize) {
   desktopCustomize.addEventListener("click", () => openSheet(settingsSheet));
+}
+if (parallaxEnable) {
+  parallaxEnable.addEventListener("click", async () => {
+    if (isDesktopLayout()) {
+      parallaxState.deviceActive = false;
+      resetParallaxBaseline();
+      resetParallaxTarget();
+      syncParallax();
+      return;
+    }
+
+    if (state.reduceMotion) {
+      state.reduceMotion = false;
+      applyState();
+    }
+
+    parallaxState.deviceActive = false;
+    resetParallaxBaseline();
+    resetParallaxTarget();
+    await requestMotionPermission(true);
+    syncParallax();
+  });
 }
 sheetBackdrop.addEventListener("click", closeSheets);
 
