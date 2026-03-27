@@ -40,18 +40,85 @@ function detectBrowserMode() {
 }
 
 const systemThemeQuery = window.matchMedia ? window.matchMedia("(prefers-color-scheme: dark)") : null;
+let hasWarnedAboutStorage = false;
 
-const state = {
-  browserMode: localStorage.getItem(STORAGE_KEYS.browserMode) || detectBrowserMode(),
-  themeMode: localStorage.getItem(STORAGE_KEYS.themeMode) || "system",
-  style: localStorage.getItem(STORAGE_KEYS.style) || "liquid",
-  engine: localStorage.getItem(STORAGE_KEYS.engine) || "google",
-  reduceMotion: localStorage.getItem(STORAGE_KEYS.reduceMotion) === "true",
-  showRecent: localStorage.getItem(STORAGE_KEYS.showRecent) !== "false",
-  showQuickLinks: localStorage.getItem(STORAGE_KEYS.showQuickLinks) !== "false",
-  wallpaper: localStorage.getItem(STORAGE_KEYS.wallpaper) || "",
-  recent: []
-};
+function warnStorageAccess(operation, error) {
+  if (hasWarnedAboutStorage) {
+    return;
+  }
+
+  hasWarnedAboutStorage = true;
+  console.warn(`Storage ${operation} failed. Falling back to in-memory state.`, error);
+}
+
+function readStorage(key) {
+  try {
+    return localStorage.getItem(key);
+  } catch (error) {
+    warnStorageAccess("read", error);
+    return null;
+  }
+}
+
+function writeStorage(key, value) {
+  try {
+    localStorage.setItem(key, value);
+    return true;
+  } catch (error) {
+    warnStorageAccess("write", error);
+    return false;
+  }
+}
+
+function removeStorage(key) {
+  try {
+    localStorage.removeItem(key);
+    return true;
+  } catch (error) {
+    warnStorageAccess("remove", error);
+    return false;
+  }
+}
+
+function readStoredString(key, fallbackValue) {
+  const value = readStorage(key);
+  return value === null ? fallbackValue : value;
+}
+
+function readStoredBoolean(key, fallbackValue, falseToken = "false") {
+  const value = readStorage(key);
+  if (value === null) {
+    return fallbackValue;
+  }
+
+  return value !== falseToken;
+}
+
+function createInitialState() {
+  return {
+    browserMode: readStoredString(STORAGE_KEYS.browserMode, detectBrowserMode()),
+    themeMode: readStoredString(STORAGE_KEYS.themeMode, "system"),
+    style: readStoredString(STORAGE_KEYS.style, "liquid"),
+    engine: readStoredString(STORAGE_KEYS.engine, "google"),
+    reduceMotion: readStoredString(STORAGE_KEYS.reduceMotion, "false") === "true",
+    showRecent: readStoredBoolean(STORAGE_KEYS.showRecent, true),
+    showQuickLinks: readStoredBoolean(STORAGE_KEYS.showQuickLinks, true),
+    wallpaper: readStoredString(STORAGE_KEYS.wallpaper, ""),
+    recent: []
+  };
+}
+
+function persistPreferences() {
+  writeStorage(STORAGE_KEYS.themeMode, state.themeMode);
+  writeStorage(STORAGE_KEYS.browserMode, state.browserMode);
+  writeStorage(STORAGE_KEYS.style, state.style);
+  writeStorage(STORAGE_KEYS.engine, state.engine);
+  writeStorage(STORAGE_KEYS.reduceMotion, String(state.reduceMotion));
+  writeStorage(STORAGE_KEYS.showRecent, String(state.showRecent));
+  writeStorage(STORAGE_KEYS.showQuickLinks, String(state.showQuickLinks));
+}
+
+const state = createInitialState();
 
 const body = document.body;
 const searchForm = document.getElementById("search-form");
@@ -267,7 +334,7 @@ function renderRecentEntries() {
 }
 
 function persistRecentEntries() {
-  localStorage.setItem(STORAGE_KEYS.recent, JSON.stringify(state.recent));
+  writeStorage(STORAGE_KEYS.recent, JSON.stringify(state.recent));
 }
 
 function addRecentEntry(entry) {
@@ -757,14 +824,7 @@ function applyState() {
   });
 
   syncComponentPicker();
-
-  localStorage.setItem(STORAGE_KEYS.themeMode, state.themeMode);
-  localStorage.setItem(STORAGE_KEYS.browserMode, state.browserMode);
-  localStorage.setItem(STORAGE_KEYS.style, state.style);
-  localStorage.setItem(STORAGE_KEYS.engine, state.engine);
-  localStorage.setItem(STORAGE_KEYS.reduceMotion, String(state.reduceMotion));
-  localStorage.setItem(STORAGE_KEYS.showRecent, String(state.showRecent));
-  localStorage.setItem(STORAGE_KEYS.showQuickLinks, String(state.showQuickLinks));
+  persistPreferences();
   syncThemeColor();
   syncCropperPreset();
   syncCropLayout(true);
@@ -1607,14 +1667,12 @@ async function renderWallpaper(dataUrl) {
 
 function persistWallpaper(dataUrl) {
   if (!dataUrl) {
-    localStorage.removeItem(STORAGE_KEYS.wallpaper);
+    removeStorage(STORAGE_KEYS.wallpaper);
     return;
   }
 
-  try {
-    localStorage.setItem(STORAGE_KEYS.wallpaper, dataUrl);
-  } catch (error) {
-    throw new Error("这张壁纸存不下，换一张更小的试试。");
+  if (!writeStorage(STORAGE_KEYS.wallpaper, dataUrl)) {
+    throw new Error("当前浏览器没法保存这张壁纸，请换一张更小的，或检查浏览器存储权限。");
   }
 }
 
@@ -1637,7 +1695,7 @@ async function restoreWallpaper() {
   } catch (error) {
     console.warn("Saved wallpaper could not be restored.", error);
     state.wallpaper = "";
-    localStorage.removeItem(STORAGE_KEYS.wallpaper);
+    removeStorage(STORAGE_KEYS.wallpaper);
     setWallpaperMessage("上次保存的壁纸失效了，已经恢复默认。");
   }
 }
@@ -1929,7 +1987,7 @@ motionToggle.addEventListener("change", () => {
 
 recentClear.addEventListener("click", () => {
   state.recent = [];
-  localStorage.removeItem(STORAGE_KEYS.recent);
+  removeStorage(STORAGE_KEYS.recent);
   renderRecentEntries();
 });
 
@@ -1988,7 +2046,7 @@ if (systemThemeQuery) {
 }
 
 tabBadge.textContent = String(document.querySelectorAll(".quick-card").length).padStart(2, "0");
-state.recent = parseRecentEntries(localStorage.getItem(STORAGE_KEYS.recent));
+state.recent = parseRecentEntries(readStorage(STORAGE_KEYS.recent));
 
 handleViewportResize();
 closeCropper();
