@@ -522,6 +522,10 @@ function isDesktopLayout() {
   return body.dataset.layout === "desktop";
 }
 
+function shouldUseAdvancedGlass() {
+  return isDesktopLayout();
+}
+
 function hasSensorSupport() {
   return typeof window.DeviceOrientationEvent !== "undefined" || typeof window.DeviceMotionEvent !== "undefined";
 }
@@ -1008,6 +1012,10 @@ function getTrueGlassTypeForElement(element) {
 }
 
 function canUseTrueGlass() {
+  if (!shouldUseAdvancedGlass()) {
+    return false;
+  }
+
   if (typeof window.Container !== "function" || typeof window.html2canvas !== "function") {
     return false;
   }
@@ -1091,7 +1099,7 @@ function startTrueGlassRealtimeLoop() {
       return;
     }
 
-    if (!shouldUseGlassEffects()) {
+    if (!shouldUseGlassEffects() || !shouldUseAdvancedGlass()) {
       trueGlassRealtimeFrame = requestAnimationFrame(tick);
       return;
     }
@@ -1188,7 +1196,7 @@ function initTrueGlassForElement(element) {
 }
 
 function syncTrueGlass() {
-  if (!trueGlassReady || !shouldUseGlassEffects()) {
+  if (!trueGlassReady || !shouldUseGlassEffects() || !shouldUseAdvancedGlass()) {
     return;
   }
 
@@ -1206,7 +1214,13 @@ function syncTrueGlass() {
 }
 
 async function captureTrueGlassSnapshot() {
-  if (!trueGlassReady || trueGlassSnapshotPending || typeof window.html2canvas !== "function" || !shouldUseGlassEffects()) {
+  if (
+    !trueGlassReady ||
+    trueGlassSnapshotPending ||
+    typeof window.html2canvas !== "function" ||
+    !shouldUseGlassEffects() ||
+    !shouldUseAdvancedGlass()
+  ) {
     return;
   }
 
@@ -1269,7 +1283,7 @@ async function captureTrueGlassSnapshot() {
 }
 
 function refreshTrueGlassSnapshot() {
-  if (!trueGlassReady || !shouldUseGlassEffects()) {
+  if (!trueGlassReady || !shouldUseGlassEffects() || !shouldUseAdvancedGlass()) {
     return;
   }
 
@@ -1337,7 +1351,7 @@ function getLiquidPreset() {
 }
 
 function refreshLiquidGlassSnapshot() {
-  if (!shouldUseGlassEffects()) {
+  if (!shouldUseGlassEffects() || !shouldUseAdvancedGlass()) {
     return;
   }
 
@@ -1376,11 +1390,12 @@ function refreshLiquidGlassSnapshot() {
 
 function syncLiquidGlass() {
   const glassEnabled = shouldUseGlassEffects();
+  const advancedGlassEnabled = glassEnabled && shouldUseAdvancedGlass();
   body.classList.toggle("night-solid-mode", !glassEnabled);
-  body.classList.toggle("true-glass-enabled", trueGlassReady && glassEnabled);
-  body.classList.toggle("liquid-gl-enabled", liquidGlassReady && glassEnabled);
+  body.classList.toggle("true-glass-enabled", trueGlassReady && advancedGlassEnabled);
+  body.classList.toggle("liquid-gl-enabled", liquidGlassReady && advancedGlassEnabled);
 
-  if (!glassEnabled) {
+  if (!advancedGlassEnabled) {
     if (trueGlassRealtimeFrame) {
       cancelAnimationFrame(trueGlassRealtimeFrame);
       trueGlassRealtimeFrame = 0;
@@ -1433,7 +1448,7 @@ function syncLiquidGlass() {
 }
 
 function initLiquidGlass() {
-  if (!shouldUseGlassEffects()) {
+  if (!shouldUseGlassEffects() || !shouldUseAdvancedGlass()) {
     return;
   }
 

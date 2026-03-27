@@ -575,6 +575,11 @@ body[data-browser-mode="chrome"] .subtitle {
   border-radius: inherit;
 }
 
+body:not(.liquid-gl-enabled) .liquid-lens,
+body:not(.true-glass-enabled) .true-glass-canvas {
+  display: none !important;
+}
+
 .true-glass-canvas {
   position: absolute !important;
   inset: 0;
