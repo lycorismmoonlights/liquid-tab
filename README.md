@@ -8,6 +8,17 @@
 - [`styles.css`](/Volumes/HP P900/goole_ui_pro/styles.css)
 - [`script.js`](/Volumes/HP P900/goole_ui_pro/script.js)
 - [`manifest.webmanifest`](/Volumes/HP P900/goole_ui_pro/manifest.webmanifest)
+- [`STATE_FRAMEWORK.md`](/Volumes/HP P900/goole_ui_pro/STATE_FRAMEWORK.md)
+
+## 状态读写约定
+
+后续如果要继续改设置项、最近浏览、壁纸或别的持久化逻辑，先看 [`STATE_FRAMEWORK.md`](/Volumes/HP P900/goole_ui_pro/STATE_FRAMEWORK.md)。
+
+现在项目约定：
+
+- 所有持久化字段都登记在 [`script.js`](/Volumes/HP P900/goole_ui_pro/script.js) 的 `PERSISTED_STATE_FIELDS`
+- 运行时修改统一走 `stateStore`
+- 不再直接散写 `state.xxx = ...` 或手动 `localStorage.*`
 
 ## 现成液态玻璃实现
 

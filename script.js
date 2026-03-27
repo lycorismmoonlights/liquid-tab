@@ -80,45 +80,168 @@ function removeStorage(key) {
   }
 }
 
-function readStoredString(key, fallbackValue) {
-  const value = readStorage(key);
-  return value === null ? fallbackValue : value;
+// Keep persisted state on a single schema so new settings use one read/write path.
+const PERSISTED_STATE_FIELDS = {
+  browserMode: {
+    storageKey: STORAGE_KEYS.browserMode,
+    defaultValue: () => detectBrowserMode()
+  },
+  themeMode: {
+    storageKey: STORAGE_KEYS.themeMode,
+    defaultValue: "system"
+  },
+  style: {
+    storageKey: STORAGE_KEYS.style,
+    defaultValue: "liquid"
+  },
+  engine: {
+    storageKey: STORAGE_KEYS.engine,
+    defaultValue: "google"
+  },
+  reduceMotion: {
+    storageKey: STORAGE_KEYS.reduceMotion,
+    defaultValue: false,
+    read: (value) => value === "true",
+    write: (value) => String(value)
+  },
+  showRecent: {
+    storageKey: STORAGE_KEYS.showRecent,
+    defaultValue: true,
+    read: (value) => value !== "false",
+    write: (value) => String(value)
+  },
+  showQuickLinks: {
+    storageKey: STORAGE_KEYS.showQuickLinks,
+    defaultValue: true,
+    read: (value) => value !== "false",
+    write: (value) => String(value)
+  },
+  wallpaper: {
+    storageKey: STORAGE_KEYS.wallpaper,
+    defaultValue: "",
+    shouldClear: (value) => !value
+  },
+  recent: {
+    storageKey: STORAGE_KEYS.recent,
+    defaultValue: [],
+    read: (value) => parseRecentEntries(value),
+    write: (value) => JSON.stringify(value),
+    shouldClear: (value) => !Array.isArray(value) || !value.length
+  }
+};
+
+function getStateFieldConfig(fieldName) {
+  return PERSISTED_STATE_FIELDS[fieldName] || null;
 }
 
-function readStoredBoolean(key, fallbackValue, falseToken = "false") {
-  const value = readStorage(key);
-  if (value === null) {
-    return fallbackValue;
+function resolveDefaultStateValue(config) {
+  return typeof config.defaultValue === "function" ? config.defaultValue() : config.defaultValue;
+}
+
+function readStateField(fieldName) {
+  const config = getStateFieldConfig(fieldName);
+  if (!config) {
+    return undefined;
   }
 
-  return value !== falseToken;
+  const rawValue = readStorage(config.storageKey);
+  if (rawValue === null) {
+    return resolveDefaultStateValue(config);
+  }
+
+  return typeof config.read === "function" ? config.read(rawValue) : rawValue;
+}
+
+function writeStateField(fieldName, value) {
+  const config = getStateFieldConfig(fieldName);
+  if (!config) {
+    return true;
+  }
+
+  if (typeof config.shouldClear === "function" && config.shouldClear(value)) {
+    return removeStorage(config.storageKey);
+  }
+
+  const serializedValue = typeof config.write === "function" ? config.write(value) : value;
+  return writeStorage(config.storageKey, serializedValue);
 }
 
 function createInitialState() {
   return {
-    browserMode: readStoredString(STORAGE_KEYS.browserMode, detectBrowserMode()),
-    themeMode: readStoredString(STORAGE_KEYS.themeMode, "system"),
-    style: readStoredString(STORAGE_KEYS.style, "liquid"),
-    engine: readStoredString(STORAGE_KEYS.engine, "google"),
-    reduceMotion: readStoredString(STORAGE_KEYS.reduceMotion, "false") === "true",
-    showRecent: readStoredBoolean(STORAGE_KEYS.showRecent, true),
-    showQuickLinks: readStoredBoolean(STORAGE_KEYS.showQuickLinks, true),
-    wallpaper: readStoredString(STORAGE_KEYS.wallpaper, ""),
-    recent: []
+    browserMode: readStateField("browserMode"),
+    themeMode: readStateField("themeMode"),
+    style: readStateField("style"),
+    engine: readStateField("engine"),
+    reduceMotion: readStateField("reduceMotion"),
+    showRecent: readStateField("showRecent"),
+    showQuickLinks: readStateField("showQuickLinks"),
+    wallpaper: readStateField("wallpaper"),
+    recent: readStateField("recent")
   };
 }
 
-function persistPreferences() {
-  writeStorage(STORAGE_KEYS.themeMode, state.themeMode);
-  writeStorage(STORAGE_KEYS.browserMode, state.browserMode);
-  writeStorage(STORAGE_KEYS.style, state.style);
-  writeStorage(STORAGE_KEYS.engine, state.engine);
-  writeStorage(STORAGE_KEYS.reduceMotion, String(state.reduceMotion));
-  writeStorage(STORAGE_KEYS.showRecent, String(state.showRecent));
-  writeStorage(STORAGE_KEYS.showQuickLinks, String(state.showQuickLinks));
+let stateWriteDepth = 0;
+
+function withStateWrite(fn) {
+  stateWriteDepth += 1;
+
+  try {
+    return fn();
+  } finally {
+    stateWriteDepth = Math.max(0, stateWriteDepth - 1);
+  }
 }
 
-const state = createInitialState();
+function createGuardedState(initialState) {
+  const warnedFields = new Set();
+
+  return new Proxy(initialState, {
+    set(target, property, value) {
+      if (stateWriteDepth === 0 && typeof property === "string" && !warnedFields.has(property)) {
+        warnedFields.add(property);
+        console.warn(`Direct state write to "${property}" detected. Use stateStore.write/patch/toggle instead.`);
+      }
+
+      target[property] = value;
+      return true;
+    }
+  });
+}
+
+const state = createGuardedState(createInitialState());
+
+const stateStore = {
+  read(fieldName) {
+    return state[fieldName];
+  },
+  write(fieldName, value, options = {}) {
+    withStateWrite(() => {
+      state[fieldName] = value;
+    });
+
+    if (options.persist === false) {
+      return true;
+    }
+
+    return writeStateField(fieldName, value);
+  },
+  patch(nextValues, options = {}) {
+    return Object.entries(nextValues).every(([fieldName, value]) => this.write(fieldName, value, options));
+  },
+  toggle(fieldName, options = {}) {
+    return this.write(fieldName, !this.read(fieldName), options);
+  },
+  persist(fieldName, value) {
+    return writeStateField(fieldName, value);
+  },
+  replaceRecent(entries) {
+    this.write("recent", entries.slice(0, MAX_RECENT_ITEMS));
+    renderRecentEntries();
+  },
+  clearRecent() {
+    this.replaceRecent([]);
+  }
+};
 
 const body = document.body;
 const searchForm = document.getElementById("search-form");
@@ -270,9 +393,9 @@ function syncComponentPicker() {
 
 function toggleComponentVisibility(componentId) {
   if (componentId === "quick_links") {
-    state.showQuickLinks = !state.showQuickLinks;
+    stateStore.toggle("showQuickLinks");
   } else if (componentId === "recent_panel") {
-    state.showRecent = !state.showRecent;
+    stateStore.toggle("showRecent");
   } else {
     return;
   }
@@ -333,10 +456,6 @@ function renderRecentEntries() {
   });
 }
 
-function persistRecentEntries() {
-  writeStorage(STORAGE_KEYS.recent, JSON.stringify(state.recent));
-}
-
 function addRecentEntry(entry) {
   if (!entry || !entry.url || !entry.title) {
     return;
@@ -350,13 +469,10 @@ function addRecentEntry(entry) {
     engineLabel: entry.engineLabel || ""
   };
 
-  state.recent = [
+  stateStore.replaceRecent([
     normalizedEntry,
-    ...state.recent.filter((item) => item.url !== normalizedEntry.url)
-  ].slice(0, MAX_RECENT_ITEMS);
-
-  persistRecentEntries();
-  renderRecentEntries();
+    ...stateStore.read("recent").filter((item) => item.url !== normalizedEntry.url)
+  ]);
 }
 
 function syncWallpaperControls() {
@@ -824,7 +940,6 @@ function applyState() {
   });
 
   syncComponentPicker();
-  persistPreferences();
   syncThemeColor();
   syncCropperPreset();
   syncCropLayout(true);
@@ -1666,19 +1781,14 @@ async function renderWallpaper(dataUrl) {
 }
 
 function persistWallpaper(dataUrl) {
-  if (!dataUrl) {
-    removeStorage(STORAGE_KEYS.wallpaper);
-    return;
-  }
-
-  if (!writeStorage(STORAGE_KEYS.wallpaper, dataUrl)) {
+  if (!stateStore.persist("wallpaper", dataUrl)) {
     throw new Error("当前浏览器没法保存这张壁纸，请换一张更小的，或检查浏览器存储权限。");
   }
 }
 
 async function setWallpaper(dataUrl) {
   persistWallpaper(dataUrl);
-  state.wallpaper = dataUrl;
+  stateStore.write("wallpaper", dataUrl, { persist: false });
   await renderWallpaper(dataUrl);
   syncWallpaperControls();
 }
@@ -1694,8 +1804,8 @@ async function restoreWallpaper() {
     await renderWallpaper(state.wallpaper);
   } catch (error) {
     console.warn("Saved wallpaper could not be restored.", error);
-    state.wallpaper = "";
-    removeStorage(STORAGE_KEYS.wallpaper);
+    stateStore.write("wallpaper", "", { persist: false });
+    stateStore.persist("wallpaper", "");
     setWallpaperMessage("上次保存的壁纸失效了，已经恢复默认。");
   }
 }
@@ -1719,28 +1829,28 @@ pasteButton.addEventListener("click", async () => {
 
 document.querySelectorAll("[data-style-choice]").forEach((button) => {
   button.addEventListener("click", () => {
-    state.style = button.dataset.styleChoice;
+    stateStore.write("style", button.dataset.styleChoice);
     applyState();
   });
 });
 
 document.querySelectorAll("[data-browser-mode-choice]").forEach((button) => {
   button.addEventListener("click", () => {
-    state.browserMode = button.dataset.browserModeChoice;
+    stateStore.write("browserMode", button.dataset.browserModeChoice);
     applyState();
   });
 });
 
 document.querySelectorAll("[data-theme-mode-choice]").forEach((button) => {
   button.addEventListener("click", () => {
-    state.themeMode = button.dataset.themeModeChoice;
+    stateStore.write("themeMode", button.dataset.themeModeChoice);
     applyState();
   });
 });
 
 document.querySelectorAll("[data-engine-choice]").forEach((button) => {
   button.addEventListener("click", () => {
-    state.engine = button.dataset.engineChoice;
+    stateStore.write("engine", button.dataset.engineChoice);
     applyState();
   });
 });
@@ -1967,7 +2077,7 @@ if (parallaxEnable) {
     }
 
     if (state.reduceMotion) {
-      state.reduceMotion = false;
+      stateStore.write("reduceMotion", false);
       applyState();
     }
 
@@ -1981,14 +2091,12 @@ if (parallaxEnable) {
 sheetBackdrop.addEventListener("click", closeSheets);
 
 motionToggle.addEventListener("change", () => {
-  state.reduceMotion = motionToggle.checked;
+  stateStore.write("reduceMotion", motionToggle.checked);
   applyState();
 });
 
 recentClear.addEventListener("click", () => {
-  state.recent = [];
-  removeStorage(STORAGE_KEYS.recent);
-  renderRecentEntries();
+  stateStore.clearRecent();
 });
 
 document.addEventListener("keydown", (event) => {
@@ -2046,7 +2154,6 @@ if (systemThemeQuery) {
 }
 
 tabBadge.textContent = String(document.querySelectorAll(".quick-card").length).padStart(2, "0");
-state.recent = parseRecentEntries(readStorage(STORAGE_KEYS.recent));
 
 handleViewportResize();
 closeCropper();
