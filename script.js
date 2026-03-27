@@ -328,6 +328,10 @@ function syncLayoutMode() {
   body.dataset.layout = resolveLayoutMode();
 }
 
+function isDesktopLayout() {
+  return body.dataset.layout === "desktop";
+}
+
 function hasActiveOverlay() {
   return !tabsSheet.hidden || !settingsSheet.hidden || !cropper.hidden;
 }
@@ -409,7 +413,7 @@ function resetParallaxBaseline() {
 }
 
 function handlePointerParallax(event) {
-  if (parallaxState.deviceActive || !canUseParallax()) {
+  if (parallaxState.deviceActive || !canUseParallax() || !isDesktopLayout()) {
     return;
   }
 
@@ -435,7 +439,7 @@ function attachPointerParallax() {
 }
 
 function handleDeviceOrientation(event) {
-  if (!canUseParallax()) {
+  if (!canUseParallax() || isDesktopLayout()) {
     return;
   }
 
@@ -488,6 +492,7 @@ function requestMotionPermission() {
 
 function primeMotionPermission() {
   if (
+    isDesktopLayout() ||
     parallaxState.primerAttached ||
     parallaxState.permissionRequested ||
     parallaxState.orientationAttached ||
@@ -519,11 +524,15 @@ function primeMotionPermission() {
 
   parallaxState.primerAttached = true;
   parallaxState.primerCleanup = () => {
+    window.removeEventListener("pointerdown", request);
+    window.removeEventListener("touchstart", request);
     window.removeEventListener("pointerup", request);
     window.removeEventListener("touchend", request);
     window.removeEventListener("click", request);
   };
 
+  window.addEventListener("pointerdown", request, { passive: true });
+  window.addEventListener("touchstart", request, { passive: true });
   window.addEventListener("pointerup", request, { passive: true });
   window.addEventListener("touchend", request, { passive: true });
   window.addEventListener("click", request, { passive: true });
@@ -531,7 +540,13 @@ function primeMotionPermission() {
 
 function syncParallax() {
   attachPointerParallax();
-  primeMotionPermission();
+
+  if (!isDesktopLayout()) {
+    primeMotionPermission();
+  } else {
+    parallaxState.deviceActive = false;
+    resetParallaxBaseline();
+  }
 
   if (!canUseParallax()) {
     resetParallaxTarget();
