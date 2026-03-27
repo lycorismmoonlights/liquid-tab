@@ -105,8 +105,12 @@ const parallaxState = {
   currentY: 0,
   baseBeta: null,
   baseGamma: null,
+  baseMotionX: null,
+  baseMotionY: null,
   deviceActive: false,
+  sensorSource: "",
   orientationAttached: false,
+  motionAttached: false,
   permissionRequested: false,
   primerAttached: false,
   primerCleanup: null,
@@ -332,6 +336,10 @@ function isDesktopLayout() {
   return body.dataset.layout === "desktop";
 }
 
+function hasSensorSupport() {
+  return typeof window.DeviceOrientationEvent !== "undefined" || typeof window.DeviceMotionEvent !== "undefined";
+}
+
 function hasActiveOverlay() {
   return !tabsSheet.hidden || !settingsSheet.hidden || !cropper.hidden;
 }
@@ -410,6 +418,9 @@ function resetParallaxTarget() {
 function resetParallaxBaseline() {
   parallaxState.baseBeta = null;
   parallaxState.baseGamma = null;
+  parallaxState.baseMotionX = null;
+  parallaxState.baseMotionY = null;
+  parallaxState.sensorSource = "";
 }
 
 function handlePointerParallax(event) {
@@ -453,6 +464,7 @@ function handleDeviceOrientation(event) {
   }
 
   parallaxState.deviceActive = true;
+  parallaxState.sensorSource = "orientation";
   const x = clamp((event.gamma - parallaxState.baseGamma) / 18, -1, 1);
   const y = clamp((event.beta - parallaxState.baseBeta) / 22, -1, 1);
   setParallaxTarget(x, y);
@@ -467,27 +479,85 @@ function attachDeviceOrientation() {
   parallaxState.orientationAttached = true;
 }
 
+function handleDeviceMotion(event) {
+  if (!canUseParallax() || isDesktopLayout() || parallaxState.sensorSource === "orientation") {
+    return;
+  }
+
+  const acceleration = event.accelerationIncludingGravity || event.acceleration;
+  if (!acceleration || typeof acceleration.x !== "number" || typeof acceleration.y !== "number") {
+    return;
+  }
+
+  if (parallaxState.baseMotionX === null || parallaxState.baseMotionY === null) {
+    parallaxState.baseMotionX = acceleration.x;
+    parallaxState.baseMotionY = acceleration.y;
+  }
+
+  parallaxState.deviceActive = true;
+  parallaxState.sensorSource = "motion";
+  const x = clamp((acceleration.x - parallaxState.baseMotionX) / 3.2, -1, 1);
+  const y = clamp((acceleration.y - parallaxState.baseMotionY) / 4.2, -1, 1);
+  setParallaxTarget(x, y);
+}
+
+function attachDeviceMotion() {
+  if (parallaxState.motionAttached || typeof window.DeviceMotionEvent === "undefined") {
+    return;
+  }
+
+  window.addEventListener("devicemotion", handleDeviceMotion, { passive: true });
+  parallaxState.motionAttached = true;
+}
+
+function getPermissionRequester(eventType) {
+  const constructor = eventType === "motion" ? window.DeviceMotionEvent : window.DeviceOrientationEvent;
+  if (!constructor || typeof constructor.requestPermission !== "function") {
+    return null;
+  }
+
+  return () => constructor.requestPermission();
+}
+
 function requestMotionPermission() {
-  if (parallaxState.permissionRequested || typeof window.DeviceOrientationEvent === "undefined") {
+  if (parallaxState.permissionRequested || !hasSensorSupport()) {
     return;
   }
 
   parallaxState.permissionRequested = true;
+  const requestMotion = getPermissionRequester("motion");
+  const requestOrientation = getPermissionRequester("orientation");
 
-  if (typeof window.DeviceOrientationEvent.requestPermission === "function") {
-    window.DeviceOrientationEvent.requestPermission()
-      .then((result) => {
-        if (result === "granted") {
-          attachDeviceOrientation();
-        }
-      })
-      .catch((error) => {
-        console.warn("Motion permission request failed.", error);
-      });
+  if (!requestMotion && !requestOrientation) {
+    attachDeviceMotion();
+    attachDeviceOrientation();
     return;
   }
 
-  attachDeviceOrientation();
+  Promise.allSettled([
+    requestMotion ? requestMotion() : Promise.resolve("granted"),
+    requestOrientation ? requestOrientation() : Promise.resolve("granted")
+  ])
+    .then(([motionResult, orientationResult]) => {
+      const motionGranted = motionResult.status === "fulfilled" && motionResult.value === "granted";
+      const orientationGranted = orientationResult.status === "fulfilled" && orientationResult.value === "granted";
+
+      if (motionGranted || !requestMotion) {
+        attachDeviceMotion();
+      }
+
+      if (orientationGranted || !requestOrientation) {
+        attachDeviceOrientation();
+      }
+
+      if (!motionGranted && !orientationGranted && requestMotion && requestOrientation) {
+        parallaxState.permissionRequested = false;
+      }
+    })
+    .catch((error) => {
+      parallaxState.permissionRequested = false;
+      console.warn("Motion permission request failed.", error);
+    });
 }
 
 function primeMotionPermission() {
@@ -495,13 +565,14 @@ function primeMotionPermission() {
     isDesktopLayout() ||
     parallaxState.primerAttached ||
     parallaxState.permissionRequested ||
-    parallaxState.orientationAttached ||
-    typeof window.DeviceOrientationEvent === "undefined"
+    (parallaxState.orientationAttached && parallaxState.motionAttached) ||
+    !hasSensorSupport()
   ) {
     return;
   }
 
-  if (typeof window.DeviceOrientationEvent.requestPermission !== "function") {
+  if (!getPermissionRequester("motion") && !getPermissionRequester("orientation")) {
+    attachDeviceMotion();
     attachDeviceOrientation();
     return;
   }
