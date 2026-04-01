@@ -271,7 +271,7 @@ input {
   inset: 0;
   z-index: 0;
   opacity: 0;
-  transform: scale(1.08);
+  transform: scale(var(--wallpaper-render-scale, 1.08));
   translate: var(--depth-bg-x) var(--depth-bg-y);
   background-position: center;
   background-repeat: no-repeat;
@@ -300,7 +300,7 @@ input {
 
 body.has-custom-wallpaper .scene__wallpaper {
   opacity: 1;
-  transform: scale(1.05);
+  transform: scale(var(--wallpaper-render-scale, 1.08));
 }
 
 body.has-custom-wallpaper .scene__wallpaper::after {
@@ -1445,6 +1445,17 @@ body[data-browser-mode="chrome"] .dock-shell {
     inset 0 0 0 1px rgba(255, 255, 255, 0.1),
     inset 0 0 0 10px rgba(255, 255, 255, 0.035);
   pointer-events: none;
+}
+
+.cropper__outline::after {
+  content: "";
+  position: absolute;
+  inset: var(--crop-safe-inset-y, 6%) var(--crop-safe-inset-x, 8%);
+  border-radius: calc(34px - min(var(--crop-safe-inset-x, 8%), var(--crop-safe-inset-y, 6%)));
+  border: 1px dashed rgba(255, 255, 255, 0.55);
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.08),
+    inset 0 0 0 999px rgba(255, 255, 255, 0.015);
 }
 
 .cropper__zoom {

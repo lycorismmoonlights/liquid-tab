@@ -25,17 +25,32 @@ const CROP_PRESETS = {
   default: {
     width: 1179,
     height: 2556,
-    copy: "只有上传图片时才会出现。框选比例暂时按 iPhone 15 Pro 竖屏参考，拖动图片调整位置，再用下面的滑块缩放。"
+    viewportWidth: 393,
+    viewportHeight: 852,
+    renderScale: 1.1,
+    maxShiftX: 14,
+    maxShiftY: 12,
+    copy: "只有上传图片时才会出现。外框是壁纸实际裁切范围，内框是景深偏转下始终安全的可视区域；尽量把主体放在内框里。"
   },
   chrome: {
     width: 1179,
     height: 1994,
-    copy: "只有上传图片时才会出现。当前 Chrome 模式会按你给的截图可视区域比例裁切，自动避开上下浏览器栏，拖动图片调整位置，再用下面的滑块缩放。"
+    viewportWidth: 393,
+    viewportHeight: 665,
+    renderScale: 1.1,
+    maxShiftX: 14,
+    maxShiftY: 12,
+    copy: "只有上传图片时才会出现。外框会保留景深偏转需要的额外出血，内框是当前 Chrome 模式下真正稳定可见的区域。"
   },
   desktop: {
     width: 1600,
     height: 1000,
-    copy: "只有上传图片时才会出现。当前桌面模式会按宽屏新标签页比例裁切，参考桌面 Chrome 的可视区域，拖动图片调整位置，再用下面的滑块缩放。"
+    viewportWidth: 1600,
+    viewportHeight: 1000,
+    renderScale: 1.06,
+    maxShiftX: 14,
+    maxShiftY: 12,
+    copy: "只有上传图片时才会出现。外框是桌面壁纸裁切范围，内框是鼠标景深偏转后仍然稳定可见的安全区域。"
   }
 };
 const MAX_WALLPAPER_LENGTH = 1800000;
@@ -374,6 +389,10 @@ let mobileLiquidViewportHeight = 0;
 let mobileLiquidCaptureFrame = 0;
 let mobileLiquidCaptureToken = 0;
 let mobileLiquidCaptureSignature = "";
+let mobileLiquidCaptureOffsetX = 0;
+let mobileLiquidCaptureOffsetY = 0;
+let mobileLiquidCaptureViewportOffsetLeft = 0;
+let mobileLiquidCaptureViewportOffsetTop = 0;
 let mobileLiquidPositionFrame = 0;
 let parallaxFrame = 0;
 const parallaxState = {
@@ -404,14 +423,45 @@ function getCropPreset() {
   return state.browserMode === "chrome" ? CROP_PRESETS.chrome : CROP_PRESETS.default;
 }
 
+function getCropSafeInsets(preset) {
+  const renderScale = Math.max(1, Number(preset.renderScale) || 1);
+  const viewportWidth = Math.max(1, Number(preset.viewportWidth) || preset.width || 1);
+  const viewportHeight = Math.max(1, Number(preset.viewportHeight) || preset.height || 1);
+  const maxShiftX = Math.max(0, Number(preset.maxShiftX) || 0);
+  const maxShiftY = Math.max(0, Number(preset.maxShiftY) || 0);
+  const baseInsetRatio = (1 - 1 / renderScale) * 0.5;
+  const insetXRatio = clamp(baseInsetRatio + maxShiftX / viewportWidth, 0, 0.24);
+  const insetYRatio = clamp(baseInsetRatio + maxShiftY / viewportHeight, 0, 0.24);
+
+  return {
+    insetXRatio,
+    insetYRatio
+  };
+}
+
+function getCurrentMobileLiquidOffsets() {
+  const visualViewport = window.visualViewport;
+
+  return {
+    depthX: parseFloat(getComputedStyle(body).getPropertyValue("--depth-bg-x")) || 0,
+    depthY: parseFloat(getComputedStyle(body).getPropertyValue("--depth-bg-y")) || 0,
+    viewportLeft: visualViewport ? visualViewport.offsetLeft : 0,
+    viewportTop: visualViewport ? visualViewport.offsetTop : 0
+  };
+}
+
 function getTrueGlassSnapshotTarget() {
   return document.querySelector(LIQUID_SNAPSHOT_TARGET) || document.body;
 }
 
 function syncCropperPreset() {
   const preset = getCropPreset();
+  const safeInsets = getCropSafeInsets(preset);
   cropperFrame.style.setProperty("--crop-frame-width", String(preset.width));
   cropperFrame.style.setProperty("--crop-frame-height", String(preset.height));
+  cropperFrame.style.setProperty("--crop-safe-inset-x", `${(safeInsets.insetXRatio * 100).toFixed(2)}%`);
+  cropperFrame.style.setProperty("--crop-safe-inset-y", `${(safeInsets.insetYRatio * 100).toFixed(2)}%`);
+  body.style.setProperty("--wallpaper-render-scale", String(preset.renderScale || 1.08));
 
   if (cropperCopy) {
     cropperCopy.textContent = preset.copy;
@@ -1215,6 +1265,10 @@ function clearMobileLiquidSnapshot() {
   mobileLiquidViewportWidth = 0;
   mobileLiquidViewportHeight = 0;
   mobileLiquidCaptureSignature = "";
+  mobileLiquidCaptureOffsetX = 0;
+  mobileLiquidCaptureOffsetY = 0;
+  mobileLiquidCaptureViewportOffsetLeft = 0;
+  mobileLiquidCaptureViewportOffsetTop = 0;
   body.style.removeProperty("--mobile-liquid-image");
 }
 
@@ -1274,11 +1328,13 @@ function syncMobileLiquidGlassPositions() {
     return;
   }
 
-  const offsetX = parseFloat(getComputedStyle(body).getPropertyValue("--depth-bg-x")) || 0;
-  const offsetY = parseFloat(getComputedStyle(body).getPropertyValue("--depth-bg-y")) || 0;
-  const visualViewport = window.visualViewport;
-  const viewportOffsetLeft = visualViewport ? visualViewport.offsetLeft : 0;
-  const viewportOffsetTop = visualViewport ? visualViewport.offsetTop : 0;
+  const currentOffsets = getCurrentMobileLiquidOffsets();
+  const deltaX =
+    (currentOffsets.depthX - mobileLiquidCaptureOffsetX) +
+    (currentOffsets.viewportLeft - mobileLiquidCaptureViewportOffsetLeft);
+  const deltaY =
+    (currentOffsets.depthY - mobileLiquidCaptureOffsetY) +
+    (currentOffsets.viewportTop - mobileLiquidCaptureViewportOffsetTop);
   const backgroundWidth = mobileLiquidViewportWidth || mobileLiquidSnapshotWidth || window.innerWidth;
   const backgroundHeight = mobileLiquidViewportHeight || mobileLiquidSnapshotHeight || window.innerHeight;
 
@@ -1314,7 +1370,7 @@ function syncMobileLiquidGlassPositions() {
     lens.style.setProperty("--mobile-liquid-bg-size", `${backgroundWidth}px ${backgroundHeight}px`);
     lens.style.setProperty(
       "--mobile-liquid-bg-position",
-      `${viewportOffsetLeft + offsetX - rect.left - expand}px ${viewportOffsetTop + offsetY - rect.top - expand}px`
+      `${deltaX - rect.left - expand}px ${deltaY - rect.top - expand}px`
     );
   });
 }
@@ -1368,6 +1424,11 @@ async function captureMobileLiquidSnapshot(force = false) {
     mobileLiquidViewportWidth = snapshot.width / captureScale;
     mobileLiquidViewportHeight = snapshot.height / captureScale;
     mobileLiquidCaptureSignature = signature;
+    const captureOffsets = getCurrentMobileLiquidOffsets();
+    mobileLiquidCaptureOffsetX = captureOffsets.depthX;
+    mobileLiquidCaptureOffsetY = captureOffsets.depthY;
+    mobileLiquidCaptureViewportOffsetLeft = captureOffsets.viewportLeft;
+    mobileLiquidCaptureViewportOffsetTop = captureOffsets.viewportTop;
     body.style.setProperty("--mobile-liquid-image", `url("${mobileLiquidSnapshotUrl}")`);
     syncMobileLiquidGlassPositions();
   } catch (error) {
