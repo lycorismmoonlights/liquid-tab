@@ -1119,7 +1119,13 @@ function shouldUseAdvancedGlass() {
 }
 
 function shouldUseMobileCodepenGlass() {
-  return false;
+  return (
+    !isDesktopLayout() &&
+    shouldUseGlassEffects() &&
+    state.style === "liquid" &&
+    !canUseDesktopSvgGlass() &&
+    typeof window.html2canvas === "function"
+  );
 }
 
 function hasSensorSupport() {
@@ -2520,23 +2526,39 @@ function getLiquidPreset() {
 
 function refreshLiquidGlassSnapshot() {
   if (syncDesktopSvgGlass()) {
+    body.classList.remove("mobile-codepen-glass-enabled");
+    clearMobileLiquidSnapshot();
     scheduleDesktopSvgGlassRefresh();
     return;
   }
 
   clearDesktopSvgGlass();
+
+  if (shouldUseMobileCodepenGlass()) {
+    body.classList.add("mobile-codepen-glass-enabled");
+    captureMobileLiquidSnapshot();
+    scheduleMobileLiquidGlassPositionSync();
+    return;
+  }
+
+  body.classList.remove("mobile-codepen-glass-enabled");
+  clearMobileLiquidSnapshot();
 }
 
 function syncLiquidGlass() {
   const glassEnabled = shouldUseGlassEffects();
   const svgGlassEnabled = glassEnabled && syncDesktopSvgGlass();
+  const mobileCodepenEnabled = glassEnabled && shouldUseMobileCodepenGlass();
 
   body.classList.toggle("night-solid-mode", !glassEnabled);
   body.classList.toggle("svg-displacement-glass-enabled", svgGlassEnabled);
-  body.classList.remove("true-glass-enabled", "liquid-gl-enabled", "mobile-codepen-glass-enabled");
+  body.classList.toggle("mobile-codepen-glass-enabled", mobileCodepenEnabled);
+  body.classList.remove("true-glass-enabled", "liquid-gl-enabled");
   liquidGlassReady = false;
   trueGlassReady = false;
-  clearMobileLiquidSnapshot();
+  if (!mobileCodepenEnabled) {
+    clearMobileLiquidSnapshot();
+  }
   if (trueGlassRealtimeFrame) {
     cancelAnimationFrame(trueGlassRealtimeFrame);
     trueGlassRealtimeFrame = 0;
@@ -2550,12 +2572,18 @@ function syncLiquidGlass() {
     liquidSnapshotFrame = 0;
   }
 
-  if (!svgGlassEnabled) {
+  if (svgGlassEnabled) {
+    scheduleDesktopSvgGlassRefresh();
+  } else {
     clearDesktopSvgGlass();
-    return;
   }
 
-  scheduleDesktopSvgGlassRefresh();
+  if (mobileCodepenEnabled) {
+    requestAnimationFrame(() => {
+      captureMobileLiquidSnapshot(true);
+      scheduleMobileLiquidGlassPositionSync();
+    });
+  }
 }
 
 function initLiquidGlass() {
