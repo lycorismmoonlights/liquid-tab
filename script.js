@@ -1864,6 +1864,22 @@ function getDesktopSvgGlassRole(element) {
     : "secondary";
 }
 
+function getDesktopSvgGlassKind(element) {
+  if (element.classList.contains("search-shell")) {
+    return "search";
+  }
+
+  if (element.classList.contains("dock-shell")) {
+    return "dock";
+  }
+
+  if (element.classList.contains("hero-tool")) {
+    return "pill";
+  }
+
+  return "panel";
+}
+
 function getDesktopSvgGlassBackdropTuning(role) {
   const isMobile = !isDesktopLayout();
 
@@ -1883,21 +1899,54 @@ function getDesktopSvgGlassBackdropTuning(role) {
 function buildDesktopSvgGlassProfile(element) {
   const rect = element.getBoundingClientRect();
   const role = getDesktopSvgGlassRole(element);
+  const kind = getDesktopSvgGlassKind(element);
   const isMobile = !isDesktopLayout();
   const computedStyle = window.getComputedStyle(element);
   const radius = Math.max(0, Math.round(parseFloat(computedStyle.borderTopLeftRadius) || 0));
   const width = Math.max(1, Math.round(rect.width));
   const height = Math.max(1, Math.round(rect.height));
   const minDimension = Math.max(1, Math.min(width, height));
-  const insetRatio = role === "primary"
-    ? (isMobile ? 0.16 : 0.14)
-    : (isMobile ? 0.13 : 0.11);
-  const blur = role === "primary"
-    ? (isMobile ? Math.max(5, Math.round(minDimension * 0.1)) : Math.max(7, Math.round(minDimension * 0.115)))
-    : (isMobile ? Math.max(4, Math.round(minDimension * 0.075)) : Math.max(6, Math.round(minDimension * 0.09)));
+
+  let insetRatio;
+  let blur;
+  let scale;
+  let redOffset;
+  let blueOffset;
+  let outputBlur;
+
+  if (kind === "search") {
+    insetRatio = isMobile ? 0.28 : 0.26;
+    blur = isMobile ? Math.max(3, Math.round(minDimension * 0.055)) : Math.max(4, Math.round(minDimension * 0.065));
+    scale = isMobile ? -10 : -14;
+    redOffset = isMobile ? -2 : -3;
+    blueOffset = isMobile ? 1 : 2;
+    outputBlur = isMobile ? 0.06 : 0.1;
+  } else if (kind === "dock") {
+    insetRatio = isMobile ? 0.2 : 0.18;
+    blur = isMobile ? Math.max(4, Math.round(minDimension * 0.075)) : Math.max(5, Math.round(minDimension * 0.085));
+    scale = isMobile ? -16 : -22;
+    redOffset = isMobile ? -4 : -5;
+    blueOffset = isMobile ? 2 : 3;
+    outputBlur = isMobile ? 0.1 : 0.14;
+  } else if (kind === "pill") {
+    insetRatio = isMobile ? 0.18 : 0.16;
+    blur = isMobile ? Math.max(3, Math.round(minDimension * 0.07)) : Math.max(4, Math.round(minDimension * 0.075));
+    scale = isMobile ? -14 : -20;
+    redOffset = isMobile ? -4 : -5;
+    blueOffset = isMobile ? 2 : 3;
+    outputBlur = isMobile ? 0.1 : 0.14;
+  } else {
+    insetRatio = isMobile ? 0.18 : 0.16;
+    blur = isMobile ? Math.max(4, Math.round(minDimension * 0.07)) : Math.max(5, Math.round(minDimension * 0.08));
+    scale = isMobile ? -14 : -18;
+    redOffset = isMobile ? -4 : -5;
+    blueOffset = isMobile ? 2 : 3;
+    outputBlur = isMobile ? 0.1 : 0.14;
+  }
 
   return {
     role,
+    kind,
     width,
     height,
     radius,
@@ -1907,15 +1956,11 @@ function buildDesktopSvgGlassProfile(element) {
       ? (isMobile ? 0.88 : 0.9)
       : (isMobile ? 0.82 : 0.84),
     lightness: role === "primary" ? 56 : 52,
-    scale: role === "primary"
-      ? (isMobile ? -42 : -68)
-      : (isMobile ? -26 : -42),
-    redOffset: role === "primary" ? (isMobile ? -12 : -18) : (isMobile ? -7 : -10),
+    scale,
+    redOffset,
     greenOffset: 0,
-    blueOffset: role === "primary" ? (isMobile ? 8 : 12) : (isMobile ? 5 : 7),
-    outputBlur: role === "primary"
-      ? (isMobile ? 0.4 : 0.56)
-      : (isMobile ? 0.22 : 0.32)
+    blueOffset,
+    outputBlur
   };
 }
 
