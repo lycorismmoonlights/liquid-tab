@@ -40,6 +40,7 @@ const CROP_PRESETS = {
 const MAX_WALLPAPER_LENGTH = 1800000;
 const MAX_RECENT_ITEMS = 4;
 const MAX_QUICK_LINKS = 8;
+const MOBILE_LIQUID_TARGET_SELECTOR = ".search-shell .liquid-lens, #recent-shell .liquid-lens, .dock-shell .liquid-lens, .quick-card .liquid-lens, .hero-tool .liquid-lens";
 const DEFAULT_QUICK_LINKS = [
   { title: "Google", url: "https://www.google.com" },
   { title: "YouTube", url: "https://www.youtube.com" },
@@ -359,6 +360,11 @@ let cropState = null;
 let adaptiveDayAppearanceKey = "";
 let adaptiveDayAppearanceToken = 0;
 let quickLinkEditingIndex = -1;
+let mobileLiquidSnapshotUrl = "";
+let mobileLiquidSnapshotWidth = 0;
+let mobileLiquidSnapshotHeight = 0;
+let mobileLiquidCaptureFrame = 0;
+let mobileLiquidCaptureToken = 0;
 let parallaxFrame = 0;
 const parallaxState = {
   targetX: 0,
@@ -651,6 +657,7 @@ function renderQuickLinks() {
 
   syncQuickLinkBadge();
   renderQuickLinkManager();
+  requestAnimationFrame(syncMobileLiquidGlassPositions);
 }
 
 function closeQuickLinkForm() {
@@ -818,6 +825,8 @@ function renderRecentEntries() {
 
     recentList.appendChild(item);
   });
+
+  requestAnimationFrame(syncMobileLiquidGlassPositions);
 }
 
 function addRecentEntry(entry) {
@@ -1099,6 +1108,10 @@ function shouldUseAdvancedGlass() {
   return isDesktopLayout();
 }
 
+function shouldUseMobileCodepenGlass() {
+  return !isDesktopLayout() && resolveTheme() === "day" && state.style === "liquid";
+}
+
 function hasSensorSupport() {
   return typeof window.DeviceOrientationEvent !== "undefined" || typeof window.DeviceMotionEvent !== "undefined";
 }
@@ -1177,6 +1190,87 @@ function queueParallaxFrame() {
   }
 
   parallaxFrame = requestAnimationFrame(stepParallax);
+}
+
+function clearMobileLiquidSnapshot() {
+  mobileLiquidSnapshotUrl = "";
+  mobileLiquidSnapshotWidth = 0;
+  mobileLiquidSnapshotHeight = 0;
+  body.style.removeProperty("--mobile-liquid-image");
+}
+
+function syncMobileLiquidGlassPositions() {
+  if (!shouldUseMobileCodepenGlass() || !mobileLiquidSnapshotUrl) {
+    return;
+  }
+
+  const lenses = document.querySelectorAll(MOBILE_LIQUID_TARGET_SELECTOR);
+  if (!lenses.length) {
+    return;
+  }
+
+  const offsetX = parseFloat(getComputedStyle(body).getPropertyValue("--depth-bg-x")) || 0;
+  const offsetY = parseFloat(getComputedStyle(body).getPropertyValue("--depth-bg-y")) || 0;
+  const backgroundWidth = mobileLiquidSnapshotWidth || window.innerWidth;
+  const backgroundHeight = mobileLiquidSnapshotHeight || window.innerHeight;
+
+  lenses.forEach((lens) => {
+    const rect = lens.getBoundingClientRect();
+    lens.style.setProperty("--mobile-liquid-bg-size", `${backgroundWidth}px ${backgroundHeight}px`);
+    lens.style.setProperty("--mobile-liquid-bg-position", `${offsetX - rect.left}px ${offsetY - rect.top}px`);
+  });
+}
+
+async function captureMobileLiquidSnapshot(force = false) {
+  if (!shouldUseMobileCodepenGlass()) {
+    clearMobileLiquidSnapshot();
+    return;
+  }
+
+  if (!force && mobileLiquidSnapshotUrl) {
+    syncMobileLiquidGlassPositions();
+    return;
+  }
+
+  if (typeof window.html2canvas !== "function") {
+    return;
+  }
+
+  mobileLiquidCaptureToken += 1;
+  const token = mobileLiquidCaptureToken;
+
+  try {
+    const snapshotTarget = document.querySelector(LIQUID_SNAPSHOT_TARGET);
+    if (!snapshotTarget) {
+      return;
+    }
+
+    const snapshot = await window.html2canvas(snapshotTarget, {
+      scale: 1,
+      useCORS: true,
+      allowTaint: true,
+      backgroundColor: null,
+      width: snapshotTarget.clientWidth || window.innerWidth,
+      height: snapshotTarget.clientHeight || window.innerHeight,
+      windowWidth: window.innerWidth,
+      windowHeight: window.innerHeight,
+      scrollX: 0,
+      scrollY: 0
+    });
+
+    if (token !== mobileLiquidCaptureToken) {
+      return;
+    }
+
+    mobileLiquidSnapshotUrl = snapshot.toDataURL("image/png");
+    mobileLiquidSnapshotWidth = snapshot.width;
+    mobileLiquidSnapshotHeight = snapshot.height;
+    body.style.setProperty("--mobile-liquid-image", `url("${mobileLiquidSnapshotUrl}")`);
+    syncMobileLiquidGlassPositions();
+  } catch (error) {
+    console.warn("Mobile liquid snapshot capture failed.", error);
+    clearMobileLiquidSnapshot();
+  }
 }
 
 function stepParallax() {
@@ -1965,9 +2059,11 @@ function refreshLiquidGlassSnapshot() {
 function syncLiquidGlass() {
   const glassEnabled = shouldUseGlassEffects();
   const advancedGlassEnabled = glassEnabled && shouldUseAdvancedGlass();
+  const mobileCodepenEnabled = glassEnabled && shouldUseMobileCodepenGlass();
   body.classList.toggle("night-solid-mode", !glassEnabled);
   body.classList.toggle("true-glass-enabled", trueGlassReady && advancedGlassEnabled);
   body.classList.toggle("liquid-gl-enabled", liquidGlassReady && advancedGlassEnabled);
+  body.classList.toggle("mobile-codepen-glass-enabled", mobileCodepenEnabled);
 
   if (!advancedGlassEnabled) {
     if (trueGlassRealtimeFrame) {
@@ -1985,8 +2081,17 @@ function syncLiquidGlass() {
       liquidSnapshotFrame = 0;
     }
 
+    if (mobileCodepenEnabled) {
+      captureMobileLiquidSnapshot(!mobileLiquidSnapshotUrl);
+      requestAnimationFrame(syncMobileLiquidGlassPositions);
+    } else {
+      clearMobileLiquidSnapshot();
+    }
+
     return;
   }
+
+  clearMobileLiquidSnapshot();
 
   if (!trueGlassReady && !liquidGlassReady) {
     initLiquidGlass();
@@ -2369,6 +2474,12 @@ async function renderWallpaper(dataUrl) {
     wallpaperLayer.style.backgroundImage = "none";
     body.classList.remove("has-custom-wallpaper");
     clearAdaptiveDayAppearance();
+    clearMobileLiquidSnapshot();
+    if (shouldUseMobileCodepenGlass()) {
+      requestAnimationFrame(() => {
+        captureMobileLiquidSnapshot(true);
+      });
+    }
     refreshLiquidGlassSnapshot();
     return;
   }
@@ -2378,6 +2489,12 @@ async function renderWallpaper(dataUrl) {
   body.classList.add("has-custom-wallpaper");
   adaptiveDayAppearanceKey = "";
   syncAdaptiveDayAppearance();
+  clearMobileLiquidSnapshot();
+  if (shouldUseMobileCodepenGlass()) {
+    requestAnimationFrame(() => {
+      captureMobileLiquidSnapshot(true);
+    });
+  }
   refreshLiquidGlassSnapshot();
 }
 
@@ -2790,6 +2907,18 @@ function handleViewportResize() {
   syncCropLayout(true);
   syncLiquidGlass();
   syncParallax();
+  syncMobileLiquidGlassPositions();
+
+  if (mobileLiquidCaptureFrame) {
+    cancelAnimationFrame(mobileLiquidCaptureFrame);
+  }
+
+  if (shouldUseMobileCodepenGlass()) {
+    mobileLiquidCaptureFrame = requestAnimationFrame(() => {
+      mobileLiquidCaptureFrame = 0;
+      captureMobileLiquidSnapshot(true);
+    });
+  }
 }
 
 window.addEventListener("resize", handleViewportResize);
