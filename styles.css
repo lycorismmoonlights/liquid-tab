@@ -761,6 +761,7 @@ body.mobile-codepen-glass-enabled .liquid-lens {
   display: block !important;
   overflow: hidden;
   pointer-events: none;
+  contain: paint;
 }
 
 body.mobile-codepen-glass-enabled .glass-shell::before,
@@ -797,15 +798,15 @@ body.mobile-codepen-glass-enabled .recent-shell > .liquid-lens::before,
 body.mobile-codepen-glass-enabled .hero-tool .liquid-lens::before {
   content: "";
   position: absolute;
-  inset: -10%;
+  inset: calc(var(--mobile-liquid-expand, 0px) * -1);
+  border-radius: var(--mobile-liquid-radius, inherit);
   background-image: var(--mobile-liquid-image);
   background-repeat: no-repeat;
   background-size: var(--mobile-liquid-bg-size, cover);
   background-position: var(--mobile-liquid-bg-position, center);
-  filter: url(#mobile-liquid-distortion) contrast(1.08) saturate(1.04);
-  opacity: 0.98;
-  transform: scale(1.1);
-  transform-origin: center center;
+  filter: var(--mobile-liquid-filter, url(#mobile-liquid-distortion)) contrast(1.06) saturate(1.04);
+  opacity: var(--mobile-liquid-opacity, 0.88);
+  image-rendering: auto;
 }
 
 body.mobile-codepen-glass-enabled .search-shell .liquid-lens::after,
@@ -1802,6 +1803,75 @@ body[data-layout="desktop"] .recent-item,
 body[data-layout="desktop"] .hero-tool {
   backdrop-filter: none !important;
   -webkit-backdrop-filter: none !important;
+}
+
+body.svg-displacement-glass-enabled .search-shell.desktop-svg-glass,
+body.svg-displacement-glass-enabled .dock-shell.desktop-svg-glass,
+body.svg-displacement-glass-enabled .recent-shell.desktop-svg-glass,
+body.svg-displacement-glass-enabled .hero-tool.desktop-svg-glass {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.26), rgba(248, 250, 255, 0.12)) !important;
+  border: 1px solid rgba(255, 255, 255, 0.34) !important;
+  box-shadow:
+    0 18px 36px rgba(17, 22, 33, 0.11),
+    0 8px 18px rgba(17, 22, 33, 0.04),
+    inset 0 1px 0 rgba(255, 255, 255, 0.72),
+    inset 0 -1px 0 rgba(162, 178, 204, 0.14) !important;
+}
+
+body.svg-displacement-glass-enabled .recent-shell.desktop-svg-glass,
+body.svg-displacement-glass-enabled .hero-tool.desktop-svg-glass {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.22), rgba(248, 250, 255, 0.1)) !important;
+  border-color: rgba(255, 255, 255, 0.3) !important;
+  box-shadow:
+    0 16px 30px rgba(17, 22, 33, 0.09),
+    0 8px 18px rgba(17, 22, 33, 0.035),
+    inset 0 1px 0 rgba(255, 255, 255, 0.7),
+    inset 0 -1px 0 rgba(162, 178, 204, 0.1) !important;
+}
+
+body.svg-displacement-glass-enabled .search-shell.desktop-svg-glass::before,
+body.svg-displacement-glass-enabled .dock-shell.desktop-svg-glass::before,
+body.svg-displacement-glass-enabled .recent-shell.desktop-svg-glass::before,
+body.svg-displacement-glass-enabled .hero-tool.desktop-svg-glass::before {
+  display: block !important;
+  inset: 0;
+  border-radius: inherit;
+  border: 1px solid rgba(255, 255, 255, 0.38);
+  background:
+    radial-gradient(140% 84% at 14% 0%, rgba(255, 255, 255, 0.94), transparent 42%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.38), rgba(255, 255, 255, 0.12) 42%, rgba(245, 247, 251, 0.06) 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.72),
+    inset 0 -18px 26px rgba(166, 181, 208, 0.07);
+}
+
+body.svg-displacement-glass-enabled .search-shell.desktop-svg-glass::after,
+body.svg-displacement-glass-enabled .dock-shell.desktop-svg-glass::after,
+body.svg-displacement-glass-enabled .recent-shell.desktop-svg-glass::after,
+body.svg-displacement-glass-enabled .hero-tool.desktop-svg-glass::after {
+  content: "";
+  display: block !important;
+  inset: 0;
+  border-radius: inherit;
+  opacity: 0.92;
+  background:
+    radial-gradient(130% 88% at 50% -8%, rgba(255, 255, 255, 0.34), transparent 48%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.14), rgba(255, 255, 255, 0.02) 34%, rgba(156, 173, 201, 0.08) 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.26),
+    inset 0 -22px 30px rgba(156, 173, 201, 0.08);
+  mask-image: none;
+}
+
+body[data-layout="mobile"].svg-displacement-glass-enabled .search-shell.desktop-svg-glass,
+body[data-layout="mobile"].svg-displacement-glass-enabled .dock-shell.desktop-svg-glass,
+body[data-layout="mobile"].svg-displacement-glass-enabled .recent-shell.desktop-svg-glass,
+body[data-layout="mobile"].svg-displacement-glass-enabled .hero-tool.desktop-svg-glass {
+  box-shadow:
+    0 12px 24px rgba(17, 22, 33, 0.08),
+    0 4px 10px rgba(17, 22, 33, 0.035),
+    inset 0 1px 0 rgba(255, 255, 255, 0.68),
+    inset 0 -1px 0 rgba(162, 178, 204, 0.1) !important;
 }
 
 body[data-layout="desktop"][data-theme="day"] .search-shell {
