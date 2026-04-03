@@ -1637,6 +1637,10 @@ function stepParallax() {
 
   writeParallaxVars(parallaxState.currentX, parallaxState.currentY);
 
+  if (shouldUseMobileSafariGlass()) {
+    scheduleMobileSafariGlassRefresh();
+  }
+
   if (shouldUseMobileCodepenGlass() && mobileLiquidSnapshotUrl) {
     scheduleMobileLiquidGlassPositionSync();
   }
@@ -3598,6 +3602,22 @@ function handleMobileViewportShift() {
   scheduleMobileLiquidGlassPositionSync();
 }
 
+function shouldTrackMobileGlassMotionTarget(target) {
+  return Boolean(
+    target instanceof HTMLElement &&
+    target.closest(".reveal, .glass-shell, .hero-copy, .hero-tools, .quick-grid, .page-shell")
+  );
+}
+
+function handleMobileGlassMotionEvent(event) {
+  if (!shouldTrackMobileGlassMotionTarget(event.target)) {
+    return;
+  }
+
+  scheduleMobileSafariGlassRefresh();
+  scheduleMobileLiquidGlassPositionSync();
+}
+
 window.addEventListener("resize", handleViewportResize);
 window.addEventListener("scroll", handleMobileViewportShift, { passive: true });
 window.addEventListener("orientationchange", () => {
@@ -3609,6 +3629,13 @@ if (window.visualViewport) {
   window.visualViewport.addEventListener("resize", handleViewportResize);
   window.visualViewport.addEventListener("scroll", handleMobileViewportShift);
 }
+
+document.addEventListener("animationstart", handleMobileGlassMotionEvent, true);
+document.addEventListener("animationend", handleMobileGlassMotionEvent, true);
+document.addEventListener("animationcancel", handleMobileGlassMotionEvent, true);
+document.addEventListener("transitionrun", handleMobileGlassMotionEvent, true);
+document.addEventListener("transitionend", handleMobileGlassMotionEvent, true);
+document.addEventListener("transitioncancel", handleMobileGlassMotionEvent, true);
 
 document.addEventListener("visibilitychange", () => {
   if (document.visibilityState === "hidden") {
