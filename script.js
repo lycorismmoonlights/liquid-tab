@@ -394,6 +394,7 @@ let mobileLiquidCaptureOffsetY = 0;
 let mobileLiquidCaptureViewportOffsetLeft = 0;
 let mobileLiquidCaptureViewportOffsetTop = 0;
 let mobileLiquidPositionFrame = 0;
+let mobileSafariGlassFrame = 0;
 let parallaxFrame = 0;
 const parallaxState = {
   targetX: 0,
@@ -717,7 +718,7 @@ function renderQuickLinks() {
 
   syncQuickLinkBadge();
   renderQuickLinkManager();
-  requestAnimationFrame(syncMobileLiquidGlassPositions);
+  requestAnimationFrame(refreshLiquidGlassSnapshot);
 }
 
 function closeQuickLinkForm() {
@@ -886,7 +887,7 @@ function renderRecentEntries() {
     recentList.appendChild(item);
   });
 
-  requestAnimationFrame(syncMobileLiquidGlassPositions);
+  requestAnimationFrame(refreshLiquidGlassSnapshot);
 }
 
 function addRecentEntry(entry) {
@@ -1164,8 +1165,28 @@ function isDesktopLayout() {
   return body.dataset.layout === "desktop";
 }
 
+function isMobileAppleWebKitBrowser() {
+  const userAgent = navigator.userAgent || "";
+  const platform = navigator.platform || "";
+  const isIOSDevice =
+    /iPad|iPhone|iPod/.test(userAgent) ||
+    (platform === "MacIntel" && navigator.maxTouchPoints > 1);
+
+  return isIOSDevice && /AppleWebKit/i.test(userAgent);
+}
+
 function shouldUseAdvancedGlass() {
   return isDesktopLayout();
+}
+
+function shouldUseMobileSafariGlass() {
+  return (
+    !isDesktopLayout() &&
+    shouldUseGlassEffects() &&
+    state.style === "liquid" &&
+    !canUseDesktopSvgGlass() &&
+    isMobileAppleWebKitBrowser()
+  );
 }
 
 function shouldUseMobileCodepenGlass() {
@@ -1174,6 +1195,7 @@ function shouldUseMobileCodepenGlass() {
     shouldUseGlassEffects() &&
     state.style === "liquid" &&
     !canUseDesktopSvgGlass() &&
+    !shouldUseMobileSafariGlass() &&
     typeof window.html2canvas === "function"
   );
 }
@@ -1295,6 +1317,151 @@ function buildMobileLiquidProfile(host) {
     blueOffset: Math.round(baseProfile.blueOffset * 0.8),
     outputBlur: isPrimary ? 0.16 : 0.12
   };
+}
+
+function createMobileSafariSceneClone() {
+  const sourceScene = document.querySelector(LIQUID_SNAPSHOT_TARGET);
+  if (!(sourceScene instanceof HTMLElement)) {
+    return null;
+  }
+
+  const clone = sourceScene.cloneNode(true);
+  clone.classList.add("mobile-safari-liquid-scene");
+  clone.removeAttribute("id");
+  clone.querySelectorAll("[id]").forEach((element) => {
+    element.removeAttribute("id");
+  });
+
+  const cloneWallpaper = clone.querySelector(".scene__wallpaper");
+  if (cloneWallpaper instanceof HTMLElement && wallpaperLayer instanceof HTMLElement) {
+    cloneWallpaper.style.backgroundImage = wallpaperLayer.style.backgroundImage;
+  }
+
+  return clone;
+}
+
+function clearMobileSafariGlassElement(lens) {
+  if (!(lens instanceof HTMLElement)) {
+    return;
+  }
+
+  lens.querySelectorAll(".mobile-safari-liquid-stage").forEach((element) => {
+    element.remove();
+  });
+}
+
+function clearMobileSafariGlass() {
+  if (mobileSafariGlassFrame) {
+    cancelAnimationFrame(mobileSafariGlassFrame);
+    mobileSafariGlassFrame = 0;
+  }
+
+  body.classList.remove("mobile-safari-glass-enabled");
+  document.querySelectorAll(MOBILE_LIQUID_TARGET_SELECTOR).forEach((lens) => {
+    clearMobileSafariGlassElement(lens);
+  });
+}
+
+function ensureMobileSafariGlassStage(lens) {
+  let stage = lens.querySelector(".mobile-safari-liquid-stage");
+  let scene = stage ? stage.querySelector(".mobile-safari-liquid-scene") : null;
+
+  if (!(stage instanceof HTMLElement)) {
+    stage = document.createElement("div");
+    stage.className = "mobile-safari-liquid-stage";
+    lens.appendChild(stage);
+  }
+
+  if (!(scene instanceof HTMLElement)) {
+    scene = createMobileSafariSceneClone();
+    if (!scene) {
+      return null;
+    }
+
+    stage.textContent = "";
+    stage.appendChild(scene);
+  } else if (wallpaperLayer instanceof HTMLElement) {
+    const cloneWallpaper = scene.querySelector(".scene__wallpaper");
+    if (cloneWallpaper instanceof HTMLElement) {
+      cloneWallpaper.style.backgroundImage = wallpaperLayer.style.backgroundImage;
+    }
+  }
+
+  return { stage, scene };
+}
+
+function applyMobileSafariGlassLens(lens) {
+  if (!(lens instanceof HTMLElement)) {
+    return;
+  }
+
+  const host = lens.closest(".glass-shell") || lens.parentElement;
+  if (!(host instanceof HTMLElement) || host.hidden) {
+    clearMobileSafariGlassElement(lens);
+    return;
+  }
+
+  const rect = host.getBoundingClientRect();
+  if (rect.width < 2 || rect.height < 2) {
+    clearMobileSafariGlassElement(lens);
+    return;
+  }
+
+  const entry = ensureMobileSafariGlassStage(lens);
+  if (!entry) {
+    clearMobileSafariGlassElement(lens);
+    return;
+  }
+
+  const { stage, scene } = entry;
+  const role = getMobileLiquidRole(host);
+  const computedStyle = window.getComputedStyle(host);
+  const profile = buildMobileLiquidProfile(host);
+  const filterId = getDesktopSvgGlassFilterId(profile);
+  const expand = Math.max(
+    role === "primary" ? 14 : 10,
+    Math.round(Math.min(rect.width, rect.height) * (role === "primary" ? 0.08 : 0.06))
+  );
+  const radius = Math.max(
+    expand + 2,
+    Math.round((parseFloat(computedStyle.borderTopLeftRadius) || profile.radius || 0) + expand)
+  );
+  const sourceScene = document.querySelector(LIQUID_SNAPSHOT_TARGET);
+  const sceneWidth = Math.max(1, Math.round(sourceScene?.clientWidth || window.innerWidth || 1));
+  const sceneHeight = Math.max(1, Math.round(sourceScene?.clientHeight || window.innerHeight || 1));
+  const sceneX = Math.round(expand - rect.left);
+  const sceneY = Math.round(expand - rect.top);
+
+  stage.style.inset = `${-expand}px`;
+  stage.style.borderRadius = `${radius}px`;
+  stage.style.opacity = role === "primary" ? "0.9" : "0.82";
+  stage.style.setProperty("--mobile-liquid-filter", `url(#${filterId})`);
+
+  scene.style.width = `${sceneWidth}px`;
+  scene.style.height = `${sceneHeight}px`;
+  scene.style.transform = `translate3d(${sceneX}px, ${sceneY}px, 0)`;
+}
+
+function refreshMobileSafariGlass() {
+  mobileSafariGlassFrame = 0;
+
+  if (!shouldUseMobileSafariGlass()) {
+    clearMobileSafariGlass();
+    return;
+  }
+
+  body.classList.add("mobile-safari-glass-enabled");
+  document.querySelectorAll(MOBILE_LIQUID_TARGET_SELECTOR).forEach((lens) => {
+    applyMobileSafariGlassLens(lens);
+  });
+}
+
+function scheduleMobileSafariGlassRefresh() {
+  if (mobileSafariGlassFrame) {
+    return;
+  }
+
+  mobileSafariGlassFrame = requestAnimationFrame(refreshMobileSafariGlass);
 }
 
 function getMobileLiquidCaptureSignature() {
@@ -2587,6 +2754,7 @@ function getLiquidPreset() {
 
 function refreshLiquidGlassSnapshot() {
   if (syncDesktopSvgGlass()) {
+    clearMobileSafariGlass();
     body.classList.remove("mobile-codepen-glass-enabled");
     clearMobileLiquidSnapshot();
     scheduleDesktopSvgGlassRefresh();
@@ -2594,6 +2762,16 @@ function refreshLiquidGlassSnapshot() {
   }
 
   clearDesktopSvgGlass();
+
+  if (shouldUseMobileSafariGlass()) {
+    body.classList.remove("mobile-codepen-glass-enabled");
+    clearMobileLiquidSnapshot();
+    body.classList.add("mobile-safari-glass-enabled");
+    scheduleMobileSafariGlassRefresh();
+    return;
+  }
+
+  clearMobileSafariGlass();
 
   if (shouldUseMobileCodepenGlass()) {
     body.classList.add("mobile-codepen-glass-enabled");
@@ -2609,16 +2787,21 @@ function refreshLiquidGlassSnapshot() {
 function syncLiquidGlass() {
   const glassEnabled = shouldUseGlassEffects();
   const svgGlassEnabled = glassEnabled && syncDesktopSvgGlass();
-  const mobileCodepenEnabled = glassEnabled && shouldUseMobileCodepenGlass();
+  const mobileSafariEnabled = glassEnabled && shouldUseMobileSafariGlass();
+  const mobileCodepenEnabled = glassEnabled && !mobileSafariEnabled && shouldUseMobileCodepenGlass();
 
   body.classList.toggle("night-solid-mode", !glassEnabled);
   body.classList.toggle("svg-displacement-glass-enabled", svgGlassEnabled);
+  body.classList.toggle("mobile-safari-glass-enabled", mobileSafariEnabled);
   body.classList.toggle("mobile-codepen-glass-enabled", mobileCodepenEnabled);
   body.classList.remove("true-glass-enabled", "liquid-gl-enabled");
   liquidGlassReady = false;
   trueGlassReady = false;
   if (!mobileCodepenEnabled) {
     clearMobileLiquidSnapshot();
+  }
+  if (!mobileSafariEnabled) {
+    clearMobileSafariGlass();
   }
   if (trueGlassRealtimeFrame) {
     cancelAnimationFrame(trueGlassRealtimeFrame);
@@ -2637,6 +2820,10 @@ function syncLiquidGlass() {
     scheduleDesktopSvgGlassRefresh();
   } else {
     clearDesktopSvgGlass();
+  }
+
+  if (mobileSafariEnabled) {
+    scheduleMobileSafariGlassRefresh();
   }
 
   if (mobileCodepenEnabled) {
@@ -3391,6 +3578,7 @@ function handleViewportResize() {
   syncCropLayout(true);
   syncLiquidGlass();
   syncParallax();
+  scheduleMobileSafariGlassRefresh();
   scheduleMobileLiquidGlassPositionSync();
 
   if (mobileLiquidCaptureFrame) {
@@ -3406,6 +3594,7 @@ function handleViewportResize() {
 }
 
 function handleMobileViewportShift() {
+  scheduleMobileSafariGlassRefresh();
   scheduleMobileLiquidGlassPositionSync();
 }
 
