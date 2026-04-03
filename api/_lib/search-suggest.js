@@ -45,6 +45,20 @@ function getProviderIcon(provider) {
   return String(provider || "S").trim().charAt(0).toUpperCase() || "S";
 }
 
+function isReadableSuggestionText(value, query) {
+  const normalizedValue = normalizeQuery(value);
+  if (!normalizedValue || normalizedValue.includes("\uFFFD")) {
+    return false;
+  }
+
+  const normalizedQuery = normalizeQuery(query);
+  if (containsCjk(normalizedQuery) && !containsCjk(normalizedValue)) {
+    return false;
+  }
+
+  return true;
+}
+
 function collapseTrailingDoubleConsonant(value) {
   return /([bcdfghjklmnpqrstvwxyz])\1$/i.test(value) ? value.slice(0, -1) : value;
 }
@@ -215,6 +229,7 @@ function createSearchSuggestionItems(values, { provider, query, badge, priority 
   const providerLabel = getEngineLabel(provider);
 
   return unique(values)
+    .filter((value) => isReadableSuggestionText(value, query))
     .slice(0, MAX_ENGINE_SUGGESTIONS)
     .map((value) => {
       const normalizedValue = normalizeQuery(value);
