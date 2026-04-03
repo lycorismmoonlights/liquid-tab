@@ -9,6 +9,20 @@
 - [`script.js`](/Volumes/HP P900/goole_ui_pro/script.js)
 - [`manifest.webmanifest`](/Volumes/HP P900/goole_ui_pro/manifest.webmanifest)
 - [`STATE_FRAMEWORK.md`](/Volumes/HP P900/goole_ui_pro/STATE_FRAMEWORK.md)
+- [`PROJECT_CONTEXT.md`](/Volumes/HP P900/goole_ui_pro/PROJECT_CONTEXT.md)
+
+## 跨线程上下文入口
+
+如果你之后会频繁新开 Codex 线程继续这个项目，先看：
+
+1. [`PROJECT_CONTEXT.md`](/Volumes/HP P900/goole_ui_pro/PROJECT_CONTEXT.md)
+2. [`docs/CURRENT_STATUS.md`](/Volumes/HP P900/goole_ui_pro/docs/CURRENT_STATUS.md)
+3. [`docs/NEXT_STEPS.md`](/Volumes/HP P900/goole_ui_pro/docs/NEXT_STEPS.md)
+4. [`docs/DECISIONS.md`](/Volumes/HP P900/goole_ui_pro/docs/DECISIONS.md)
+5. [`docs/CONTEXT_MECHANISM.md`](/Volumes/HP P900/goole_ui_pro/docs/CONTEXT_MECHANISM.md)
+6. [`docs/WORK_LOG.md`](/Volumes/HP P900/goole_ui_pro/docs/WORK_LOG.md)
+
+这套文档系统就是为了把项目状态、决策和线程进度沉淀到仓库里，让新线程可以直接读文件恢复上下文。现在阅读顺序也已经正式写入机制文档，不再只是建议。
 
 ## 状态读写约定
 

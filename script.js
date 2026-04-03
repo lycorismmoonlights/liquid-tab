@@ -19,8 +19,8 @@ const SEARCH_ENGINES = {
 
 const LIQUID_SNAPSHOT_TARGET = ".scene__capture";
 const LIQUID_TARGET_SELECTOR = ".liquid-lens--search, .liquid-lens--dock";
-const DESKTOP_SVG_GLASS_TARGET_SELECTOR = ".search-shell, .dock-shell, #recent-shell, .hero-tool";
-const TRUE_GLASS_HOST_SELECTOR = ".search-shell, .quick-card, #recent-shell, .dock-shell, .hero-tool";
+const DESKTOP_SVG_GLASS_TARGET_SELECTOR = ".search-shell, .search-suggest-shell, .dock-shell, #recent-shell, .hero-tool";
+const TRUE_GLASS_HOST_SELECTOR = ".search-shell, .search-suggest-shell, .quick-card, #recent-shell, .dock-shell, .hero-tool";
 const CROP_PRESETS = {
   default: {
     width: 1179,
@@ -56,6 +56,15 @@ const CROP_PRESETS = {
 const MAX_WALLPAPER_LENGTH = 1800000;
 const MAX_RECENT_ITEMS = 4;
 const MAX_QUICK_LINKS = 8;
+const MAX_SEARCH_SUGGESTIONS = 7;
+const MAX_REMOTE_SEARCH_SUGGESTIONS = 4;
+const MAX_LOCAL_SEARCH_SUGGESTIONS = 5;
+const SEARCH_SUGGESTION_DEBOUNCE_MS = 140;
+const SEARCH_SUGGESTION_ENDPOINTS = {
+  google: (query) => `https://suggestqueries.google.com/complete/search?client=firefox&hl=zh-CN&q=${encodeURIComponent(query)}`,
+  duck: (query) => `https://duckduckgo.com/ac/?q=${encodeURIComponent(query)}&kl=cn-zh`,
+  bing: (query) => `https://api.bing.com/osjson.aspx?query=${encodeURIComponent(query)}&cc=cn&setlang=zh-Hans`
+};
 const MOBILE_LIQUID_TARGET_SELECTOR = ".search-shell .liquid-lens, #recent-shell .liquid-lens, .dock-shell .liquid-lens, .quick-card .liquid-lens, .hero-tool .liquid-lens";
 const DEFAULT_QUICK_LINKS = [
   { title: "Google", url: "https://www.google.com" },
@@ -319,8 +328,13 @@ const stateStore = {
 };
 
 const body = document.body;
+const searchStack = document.getElementById("search-stack");
 const searchForm = document.getElementById("search-form");
 const searchInput = document.getElementById("search-input");
+const searchSuggestShell = document.getElementById("search-suggest-shell");
+const searchSuggestList = document.getElementById("search-suggest-list");
+const searchSuggestTitle = document.getElementById("search-suggest-title");
+const searchSuggestMeta = document.getElementById("search-suggest-meta");
 const pasteButton = document.getElementById("paste-button");
 const widgetPicker = document.getElementById("widget-picker");
 const quickGrid = document.getElementById("quick-grid");
@@ -381,6 +395,13 @@ let cropState = null;
 let adaptiveDayAppearanceKey = "";
 let adaptiveDayAppearanceToken = 0;
 let quickLinkEditingIndex = -1;
+let searchSuggestionDebounce = 0;
+let searchSuggestionRequestId = 0;
+let searchSuggestionActiveIndex = -1;
+let searchSuggestionItems = [];
+let searchSuggestionRenderedQuery = "";
+let searchSuggestionAbortController = null;
+const unavailableSearchSuggestionEngines = new Set();
 let mobileLiquidSnapshotUrl = "";
 let mobileLiquidSnapshotWidth = 0;
 let mobileLiquidSnapshotHeight = 0;
@@ -552,6 +573,540 @@ function formatRecentMeta(entry) {
   return entry.meta || getHostLabel(entry.url);
 }
 
+function getSearchEngineLabel(engine = state.engine) {
+  if (engine === "duck") {
+    return "DuckDuckGo";
+  }
+
+  if (engine === "bing") {
+    return "Bing";
+  }
+
+  return "Google";
+}
+
+function normalizeSearchSuggestionText(value) {
+  return typeof value === "string" ? value.trim().replace(/\s+/g, " ") : "";
+}
+
+function matchesSearchSuggestionText(value, query) {
+  if (!query) {
+    return true;
+  }
+
+  return normalizeSearchSuggestionText(value).toLocaleLowerCase().includes(query.toLocaleLowerCase());
+}
+
+function createSearchSuggestionKey(item) {
+  const basis = item.url || item.value || item.label || "";
+  return `${item.action}:${basis.toLocaleLowerCase()}`;
+}
+
+function pushSearchSuggestion(items, seen, item) {
+  if (!item || !item.label) {
+    return;
+  }
+
+  const label = normalizeSearchSuggestionText(item.label);
+  if (!label) {
+    return;
+  }
+
+  const value = normalizeSearchSuggestionText(item.value || label);
+  const url = typeof item.url === "string" ? item.url : "";
+  const dedupeKey = `${item.action}:${(url || value).toLocaleLowerCase()}`;
+  if (seen.has(dedupeKey)) {
+    return;
+  }
+
+  seen.add(dedupeKey);
+  items.push({
+    ...item,
+    label,
+    value,
+    url,
+    key: createSearchSuggestionKey({ ...item, label, value, url })
+  });
+}
+
+function buildSearchSuggestionItems(query, remoteQueries = []) {
+  const normalizedQuery = normalizeSearchSuggestionText(query);
+  const engineLabel = getSearchEngineLabel();
+  const items = [];
+  const seen = new Set();
+  const recentEntries = state.recent.slice();
+  const matchingRecentSearches = recentEntries.filter((entry) => (
+    entry.type === "search" &&
+    matchesSearchSuggestionText(entry.title, normalizedQuery)
+  ));
+  const matchingRecentLinks = recentEntries.filter((entry) => (
+    entry.type !== "search" &&
+    (
+      matchesSearchSuggestionText(entry.title, normalizedQuery) ||
+      matchesSearchSuggestionText(getHostLabel(entry.url), normalizedQuery) ||
+      matchesSearchSuggestionText(entry.url, normalizedQuery)
+    )
+  ));
+  const matchingQuickLinks = state.quickLinks.filter((entry) => (
+    matchesSearchSuggestionText(entry.title, normalizedQuery) ||
+    matchesSearchSuggestionText(getHostLabel(entry.url), normalizedQuery) ||
+    matchesSearchSuggestionText(entry.url, normalizedQuery)
+  ));
+
+  if (normalizedQuery) {
+    pushSearchSuggestion(items, seen, {
+      label: normalizedQuery,
+      value: normalizedQuery,
+      action: "search",
+      badge: "搜索",
+      icon: "S",
+      meta: `在 ${engineLabel} 中搜索`
+    });
+
+    if (looksLikeUrl(normalizedQuery)) {
+      const normalizedUrl = normalizeUrl(normalizedQuery);
+      pushSearchSuggestion(items, seen, {
+        label: getHostLabel(normalizedUrl),
+        value: normalizedQuery,
+        url: normalizedUrl,
+        action: "navigate",
+        badge: "直达",
+        icon: getInitials(getHostLabel(normalizedUrl)),
+        meta: `直接打开 ${getHostLabel(normalizedUrl)}`,
+        title: getHostLabel(normalizedUrl),
+        recentMeta: "网址直达",
+        recentType: "link"
+      });
+    }
+
+    remoteQueries.slice(0, MAX_REMOTE_SEARCH_SUGGESTIONS).forEach((remoteQuery) => {
+      pushSearchSuggestion(items, seen, {
+        label: remoteQuery,
+        value: remoteQuery,
+        action: "search",
+        badge: "联想",
+        icon: "S",
+        meta: `${engineLabel} 联想`
+      });
+    });
+  }
+
+  matchingRecentSearches.slice(0, MAX_LOCAL_SEARCH_SUGGESTIONS).forEach((entry) => {
+    pushSearchSuggestion(items, seen, {
+      label: entry.title,
+      value: entry.title,
+      action: "search",
+      badge: "最近",
+      icon: "R",
+      meta: formatRecentMeta(entry)
+    });
+  });
+
+  matchingRecentLinks.slice(0, MAX_LOCAL_SEARCH_SUGGESTIONS).forEach((entry) => {
+    pushSearchSuggestion(items, seen, {
+      label: entry.title,
+      value: entry.title,
+      url: entry.url,
+      action: "navigate",
+      badge: "最近",
+      icon: getInitials(entry.title),
+      meta: `最近访问 · ${getHostLabel(entry.url)}`,
+      title: entry.title,
+      recentMeta: entry.meta || getHostLabel(entry.url),
+      recentType: entry.type || "link"
+    });
+  });
+
+  matchingQuickLinks.slice(0, MAX_LOCAL_SEARCH_SUGGESTIONS).forEach((entry) => {
+    pushSearchSuggestion(items, seen, {
+      label: entry.title,
+      value: entry.title,
+      url: entry.url,
+      action: "navigate",
+      badge: "快捷",
+      icon: getInitials(entry.title),
+      meta: `快捷方式 · ${getHostLabel(entry.url)}`,
+      title: entry.title,
+      recentMeta: getHostLabel(entry.url),
+      recentType: "link"
+    });
+  });
+
+  return items.slice(0, MAX_SEARCH_SUGGESTIONS);
+}
+
+function setSearchInputExpanded(isExpanded) {
+  if (!searchInput) {
+    return;
+  }
+
+  searchInput.setAttribute("aria-expanded", String(isExpanded));
+  if (!isExpanded) {
+    searchInput.removeAttribute("aria-activedescendant");
+  }
+}
+
+function canShowSearchSuggestions() {
+  return Boolean(
+    searchStack &&
+    searchInput &&
+    searchSuggestShell &&
+    searchSuggestList &&
+    isDesktopLayout()
+  );
+}
+
+function clearSearchSuggestionDebounce() {
+  if (!searchSuggestionDebounce) {
+    return;
+  }
+
+  window.clearTimeout(searchSuggestionDebounce);
+  searchSuggestionDebounce = 0;
+}
+
+function cancelSearchSuggestionRequest() {
+  if (!searchSuggestionAbortController) {
+    return;
+  }
+
+  searchSuggestionAbortController.abort();
+  searchSuggestionAbortController = null;
+}
+
+function hideSearchSuggestions({ clearItems = true, abortFetch = false } = {}) {
+  const wasOpen = Boolean(searchSuggestShell && !searchSuggestShell.hidden);
+
+  if (abortFetch) {
+    cancelSearchSuggestionRequest();
+  }
+
+  searchSuggestionActiveIndex = -1;
+  if (clearItems) {
+    searchSuggestionItems = [];
+    searchSuggestionRenderedQuery = "";
+  }
+
+  if (searchSuggestShell) {
+    searchSuggestShell.hidden = true;
+  }
+
+  if (searchSuggestList && clearItems) {
+    searchSuggestList.textContent = "";
+  }
+
+  setSearchInputExpanded(false);
+
+  if (wasOpen) {
+    requestAnimationFrame(refreshLiquidGlassSnapshot);
+  }
+}
+
+function closeSearchSuggestions() {
+  clearSearchSuggestionDebounce();
+  cancelSearchSuggestionRequest();
+  searchSuggestionRequestId += 1;
+  hideSearchSuggestions({ clearItems: true, abortFetch: false });
+}
+
+function escapeRegExp(value) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function buildHighlightedSuggestionLabel(text, query) {
+  const fragment = document.createDocumentFragment();
+  if (!query) {
+    fragment.append(text);
+    return fragment;
+  }
+
+  const pattern = new RegExp(`(${escapeRegExp(query)})`, "ig");
+  const parts = text.split(pattern).filter(Boolean);
+  if (!parts.length) {
+    fragment.append(text);
+    return fragment;
+  }
+
+  const normalizedQuery = query.toLocaleLowerCase();
+  parts.forEach((part) => {
+    if (part.toLocaleLowerCase() === normalizedQuery) {
+      const mark = document.createElement("mark");
+      mark.textContent = part;
+      fragment.appendChild(mark);
+      return;
+    }
+
+    fragment.append(part);
+  });
+
+  return fragment;
+}
+
+function updateSearchSuggestionHeader(query, remoteCount = 0) {
+  if (!searchSuggestTitle || !searchSuggestMeta) {
+    return;
+  }
+
+  if (!query) {
+    searchSuggestTitle.textContent = "最近搜索与快捷方式";
+    searchSuggestMeta.textContent = "桌面端";
+    return;
+  }
+
+  if (looksLikeUrl(query)) {
+    searchSuggestTitle.textContent = "快速访问";
+    searchSuggestMeta.textContent = "网址直达 + 本地记录";
+    return;
+  }
+
+  searchSuggestTitle.textContent = remoteCount > 0 ? "搜索联想" : "继续搜索";
+  searchSuggestMeta.textContent = remoteCount > 0
+    ? `${getSearchEngineLabel()} + 本地记录`
+    : `${getSearchEngineLabel()} · 本地记录`;
+}
+
+function syncSearchSuggestionActiveState() {
+  if (!searchSuggestList) {
+    return;
+  }
+
+  const activeItem = searchSuggestionItems[searchSuggestionActiveIndex] || null;
+  searchSuggestList.querySelectorAll("[data-search-suggest-index]").forEach((element) => {
+    const index = Number(element.getAttribute("data-search-suggest-index"));
+    const isActive = index === searchSuggestionActiveIndex;
+    element.classList.toggle("is-active", isActive);
+    element.setAttribute("aria-selected", String(isActive));
+  });
+
+  if (activeItem) {
+    searchInput.setAttribute("aria-activedescendant", activeItem.domId);
+  } else {
+    searchInput.removeAttribute("aria-activedescendant");
+  }
+}
+
+function renderSearchSuggestions(items, { query = "", remoteCount = 0 } = {}) {
+  if (!canShowSearchSuggestions() || !searchSuggestShell || !searchSuggestList) {
+    return;
+  }
+
+  const previousActiveKey = searchSuggestionRenderedQuery === query
+    ? searchSuggestionItems[searchSuggestionActiveIndex]?.key || ""
+    : "";
+  searchSuggestionItems = items.slice(0, MAX_SEARCH_SUGGESTIONS).map((item, index) => ({
+    ...item,
+    domId: `search-suggest-option-${index}`
+  }));
+  searchSuggestionRenderedQuery = query;
+  searchSuggestionActiveIndex = previousActiveKey
+    ? searchSuggestionItems.findIndex((item) => item.key === previousActiveKey)
+    : -1;
+
+  searchSuggestList.textContent = "";
+
+  if (!searchSuggestionItems.length) {
+    hideSearchSuggestions({ clearItems: true, abortFetch: false });
+    return;
+  }
+
+  updateSearchSuggestionHeader(query, remoteCount);
+
+  searchSuggestionItems.forEach((item, index) => {
+    const button = document.createElement("button");
+    button.className = "search-suggest-item";
+    button.type = "button";
+    button.id = item.domId;
+    button.dataset.searchSuggestIndex = String(index);
+    button.dataset.searchSuggestKind = item.action;
+    button.setAttribute("role", "option");
+    button.setAttribute("aria-selected", "false");
+
+    const icon = document.createElement("span");
+    icon.className = "search-suggest-item__icon";
+    icon.textContent = item.icon || "S";
+
+    const copy = document.createElement("span");
+    copy.className = "search-suggest-item__copy";
+
+    const label = document.createElement("span");
+    label.className = "search-suggest-item__label";
+    label.appendChild(buildHighlightedSuggestionLabel(item.label, query));
+
+    const meta = document.createElement("span");
+    meta.className = "search-suggest-item__meta";
+    meta.textContent = item.meta || "";
+
+    const badge = document.createElement("span");
+    badge.className = "search-suggest-item__badge";
+    badge.textContent = item.badge || "";
+
+    copy.append(label, meta);
+    button.append(icon, copy, badge);
+    searchSuggestList.appendChild(button);
+  });
+
+  searchSuggestShell.hidden = false;
+  setSearchInputExpanded(true);
+  syncSearchSuggestionActiveState();
+  requestAnimationFrame(refreshLiquidGlassSnapshot);
+}
+
+function activateSearchSuggestion(index) {
+  if (!searchSuggestionItems.length) {
+    searchSuggestionActiveIndex = -1;
+    syncSearchSuggestionActiveState();
+    return;
+  }
+
+  const boundedIndex = clamp(index, 0, searchSuggestionItems.length - 1);
+  searchSuggestionActiveIndex = boundedIndex;
+  syncSearchSuggestionActiveState();
+
+  const activeElement = searchSuggestList?.querySelector(`[data-search-suggest-index="${boundedIndex}"]`);
+  if (activeElement instanceof HTMLElement) {
+    activeElement.scrollIntoView({ block: "nearest" });
+  }
+}
+
+function moveSearchSuggestion(delta) {
+  if (!searchSuggestionItems.length) {
+    return;
+  }
+
+  if (searchSuggestionActiveIndex < 0) {
+    activateSearchSuggestion(delta > 0 ? 0 : searchSuggestionItems.length - 1);
+    return;
+  }
+
+  const nextIndex = (searchSuggestionActiveIndex + delta + searchSuggestionItems.length) % searchSuggestionItems.length;
+  activateSearchSuggestion(nextIndex);
+}
+
+function executeSearchSuggestion(index = searchSuggestionActiveIndex) {
+  const item = searchSuggestionItems[index];
+  if (!item) {
+    return;
+  }
+
+  if (item.action === "navigate" && item.url) {
+    closeSearchSuggestions();
+    addRecentEntry({
+      title: item.title || item.label,
+      url: item.url,
+      meta: item.recentMeta || getHostLabel(item.url),
+      type: item.recentType || "link"
+    });
+    window.location.href = item.url;
+    return;
+  }
+
+  searchInput.value = item.value;
+  closeSearchSuggestions();
+  submitSearch(item.value);
+}
+
+function parseRemoteSearchSuggestionPayload(payload, engine = state.engine) {
+  if (engine === "duck" && Array.isArray(payload)) {
+    return payload
+      .map((entry) => (typeof entry === "string" ? entry : entry?.phrase))
+      .filter((entry) => typeof entry === "string");
+  }
+
+  if (Array.isArray(payload) && Array.isArray(payload[1])) {
+    return payload[1].filter((entry) => typeof entry === "string");
+  }
+
+  return [];
+}
+
+async function fetchRemoteSearchSuggestionQueries(query, requestId) {
+  const engine = state.engine;
+  const endpointFactory = SEARCH_SUGGESTION_ENDPOINTS[engine];
+  if (!endpointFactory || unavailableSearchSuggestionEngines.has(engine)) {
+    return [];
+  }
+
+  const controller = new AbortController();
+  searchSuggestionAbortController = controller;
+
+  try {
+    const response = await fetch(endpointFactory(query), {
+      signal: controller.signal,
+      mode: "cors",
+      cache: "no-store"
+    });
+
+    if (!response.ok) {
+      throw new Error(`Search suggest request failed: ${response.status}`);
+    }
+
+    const payload = await response.json();
+    if (requestId !== searchSuggestionRequestId) {
+      return null;
+    }
+
+    return parseRemoteSearchSuggestionPayload(payload, engine)
+      .map((entry) => normalizeSearchSuggestionText(entry))
+      .filter(Boolean)
+      .slice(0, MAX_REMOTE_SEARCH_SUGGESTIONS);
+  } catch (error) {
+    if (error?.name === "AbortError") {
+      return null;
+    }
+
+    if (error instanceof TypeError) {
+      unavailableSearchSuggestionEngines.add(engine);
+    }
+
+    console.warn("Search suggestion request failed.", error);
+    return [];
+  } finally {
+    if (searchSuggestionAbortController === controller) {
+      searchSuggestionAbortController = null;
+    }
+  }
+}
+
+function refreshSearchSuggestions({ immediate = false } = {}) {
+  if (!canShowSearchSuggestions()) {
+    closeSearchSuggestions();
+    return;
+  }
+
+  clearSearchSuggestionDebounce();
+  cancelSearchSuggestionRequest();
+
+  const query = normalizeSearchSuggestionText(searchInput.value);
+  const requestId = ++searchSuggestionRequestId;
+
+  const run = async () => {
+    searchSuggestionDebounce = 0;
+    const localItems = buildSearchSuggestionItems(query);
+    renderSearchSuggestions(localItems, { query, remoteCount: 0 });
+
+    if (!query || looksLikeUrl(query) || unavailableSearchSuggestionEngines.has(state.engine)) {
+      return;
+    }
+
+    const remoteQueries = await fetchRemoteSearchSuggestionQueries(query, requestId);
+    if (!Array.isArray(remoteQueries) || requestId !== searchSuggestionRequestId) {
+      return;
+    }
+
+    renderSearchSuggestions(buildSearchSuggestionItems(query, remoteQueries), {
+      query,
+      remoteCount: remoteQueries.length
+    });
+  };
+
+  if (immediate) {
+    run();
+    return;
+  }
+
+  searchSuggestionDebounce = window.setTimeout(run, SEARCH_SUGGESTION_DEBOUNCE_MS);
+}
+
 function syncQuickLinkBadge() {
   if (!tabBadge) {
     return;
@@ -719,6 +1274,9 @@ function renderQuickLinks() {
   syncQuickLinkBadge();
   renderQuickLinkManager();
   requestAnimationFrame(refreshLiquidGlassSnapshot);
+  if (document.activeElement === searchInput && isDesktopLayout()) {
+    refreshSearchSuggestions({ immediate: true });
+  }
 }
 
 function closeQuickLinkForm() {
@@ -888,6 +1446,9 @@ function renderRecentEntries() {
   });
 
   requestAnimationFrame(refreshLiquidGlassSnapshot);
+  if (document.activeElement === searchInput && isDesktopLayout()) {
+    refreshSearchSuggestions({ immediate: true });
+  }
 }
 
 function addRecentEntry(entry) {
@@ -1969,6 +2530,12 @@ function applyState() {
   syncLiquidGlass();
   syncParallax();
   syncParallaxControls();
+
+  if (!isDesktopLayout()) {
+    closeSearchSuggestions();
+  } else if (document.activeElement === searchInput) {
+    refreshSearchSuggestions({ immediate: true });
+  }
 }
 
 function getTrueGlassControls() {
@@ -2851,6 +3418,8 @@ function normalizeUrl(value) {
 }
 
 function submitSearch(rawValue) {
+  closeSearchSuggestions();
+
   const value = rawValue.trim();
   if (!value) {
     searchInput.focus();
@@ -2871,7 +3440,7 @@ function submitSearch(rawValue) {
 
   const engineUrl = SEARCH_ENGINES[state.engine] || SEARCH_ENGINES.google;
   const searchUrl = `${engineUrl}${encodeURIComponent(value)}`;
-  const engineLabel = state.engine === "duck" ? "DuckDuckGo" : state.engine === "bing" ? "Bing" : "Google";
+  const engineLabel = getSearchEngineLabel(state.engine);
 
   addRecentEntry({
     title: value,
@@ -2885,6 +3454,8 @@ function submitSearch(rawValue) {
 }
 
 function closeSheets() {
+  closeSearchSuggestions();
+
   if (!cropper.hidden) {
     closeCropper();
     setWallpaperMessage("");
@@ -2899,6 +3470,8 @@ function closeSheets() {
 }
 
 function openSheet(sheet) {
+  closeSearchSuggestions();
+
   if (sheet !== settingsSheet && !cropper.hidden) {
     closeCropper();
     setWallpaperMessage("");
@@ -3214,11 +3787,74 @@ pasteButton.addEventListener("click", async () => {
     if (text) {
       searchInput.value = text.trim();
       searchInput.focus();
+      refreshSearchSuggestions({ immediate: true });
     }
   } catch (error) {
     searchInput.focus();
   }
 });
+
+searchInput.addEventListener("focus", () => {
+  refreshSearchSuggestions({ immediate: true });
+});
+
+searchInput.addEventListener("input", () => {
+  refreshSearchSuggestions();
+});
+
+searchInput.addEventListener("keydown", (event) => {
+  if (event.key === "Escape" && searchSuggestShell && !searchSuggestShell.hidden) {
+    event.preventDefault();
+    event.stopPropagation();
+    closeSearchSuggestions();
+    return;
+  }
+
+  if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+    event.preventDefault();
+    if (searchSuggestShell?.hidden) {
+      refreshSearchSuggestions({ immediate: true });
+    }
+    moveSearchSuggestion(event.key === "ArrowDown" ? 1 : -1);
+    return;
+  }
+
+  if (event.key === "Enter" && searchSuggestionActiveIndex >= 0) {
+    event.preventDefault();
+    executeSearchSuggestion();
+  }
+});
+
+searchInput.addEventListener("blur", () => {
+  window.setTimeout(() => {
+    if (!searchStack?.contains(document.activeElement)) {
+      closeSearchSuggestions();
+    }
+  }, 0);
+});
+
+if (searchSuggestList) {
+  searchSuggestList.addEventListener("pointerdown", (event) => {
+    const option = event.target.closest("[data-search-suggest-index]");
+    if (option) {
+      event.preventDefault();
+    }
+  });
+
+  searchSuggestList.addEventListener("click", (event) => {
+    const option = event.target.closest("[data-search-suggest-index]");
+    if (!option) {
+      return;
+    }
+
+    const index = Number(option.getAttribute("data-search-suggest-index"));
+    if (!Number.isInteger(index)) {
+      return;
+    }
+
+    executeSearchSuggestion(index);
+  });
+}
 
 document.querySelectorAll("[data-style-choice]").forEach((button) => {
   button.addEventListener("click", () => {
@@ -3252,6 +3888,14 @@ document.querySelectorAll("[data-component-choice]").forEach((button) => {
   button.addEventListener("click", () => {
     toggleComponentVisibility(button.dataset.componentChoice);
   });
+});
+
+document.addEventListener("pointerdown", (event) => {
+  if (!searchStack || searchStack.contains(event.target)) {
+    return;
+  }
+
+  closeSearchSuggestions();
 });
 
 document.addEventListener("click", (event) => {
@@ -3584,6 +4228,12 @@ function handleViewportResize() {
   syncParallax();
   scheduleMobileSafariGlassRefresh();
   scheduleMobileLiquidGlassPositionSync();
+
+  if (!isDesktopLayout()) {
+    closeSearchSuggestions();
+  } else if (document.activeElement === searchInput) {
+    refreshSearchSuggestions({ immediate: true });
+  }
 
   if (mobileLiquidCaptureFrame) {
     cancelAnimationFrame(mobileLiquidCaptureFrame);
