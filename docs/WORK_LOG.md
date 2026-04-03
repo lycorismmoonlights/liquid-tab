@@ -30,3 +30,32 @@
 ### 补充
 
 - 阅读顺序已经正式写入 [`docs/CONTEXT_MECHANISM.md`](/Volumes/HP%20P900/goole_ui_pro/docs/CONTEXT_MECHANISM.md)
+
+---
+
+## 2026-04-03
+
+### 主题
+
+搜索联想升级为桌面端液态玻璃弹层，并接入 Vercel 联网联想
+
+### 完成内容
+
+- 完成桌面端搜索联想弹层，补上键盘导航、点击外部关闭、回车执行等交互
+- 前端联想改为本地记录、网址直达、快捷方式与远端联想混合排序
+- 新增 [`api/suggest`](/Volumes/HP%20P900/goole_ui_pro/api/suggest.js) 和聚合逻辑 [`api/_lib/search-suggest.js`](/Volumes/HP%20P900/goole_ui_pro/api/_lib/search-suggest.js)
+- 接入词根扩展、Google/Bing/DuckDuckGo 联想与 Wikipedia 内容结果
+- 修正英文词根质量问题，并过滤远端乱码联想结果
+- 已推送 GitHub `main`，并部署到 Vercel 生产域名 `liquid-tab.vercel.app`
+
+### 影响
+
+- 搜索框体验从纯本地补全升级为更接近浏览器 omnibox 的混合联想
+- 前端不再直接请求第三方联想接口，CORS 和浏览器侧失败率明显降低
+- 项目从纯静态原型演进为“静态前端 + 轻量 serverless API”的结构
+
+### 下一步建议
+
+- 把同一套联想体验补到移动端
+- 继续调排序策略，减少内容结果过重或词根结果过早冒头的情况
+- 视需要补一份 `/api/suggest` 的接口说明，方便后续线程继续接
