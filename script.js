@@ -57,14 +57,9 @@ const MAX_WALLPAPER_LENGTH = 1800000;
 const MAX_RECENT_ITEMS = 4;
 const MAX_QUICK_LINKS = 8;
 const MAX_SEARCH_SUGGESTIONS = 7;
-const MAX_REMOTE_SEARCH_SUGGESTIONS = 4;
 const MAX_LOCAL_SEARCH_SUGGESTIONS = 5;
 const SEARCH_SUGGESTION_DEBOUNCE_MS = 140;
-const SEARCH_SUGGESTION_ENDPOINTS = {
-  google: (query) => `https://suggestqueries.google.com/complete/search?client=firefox&hl=zh-CN&q=${encodeURIComponent(query)}`,
-  duck: (query) => `https://duckduckgo.com/ac/?q=${encodeURIComponent(query)}&kl=cn-zh`,
-  bing: (query) => `https://api.bing.com/osjson.aspx?query=${encodeURIComponent(query)}&cc=cn&setlang=zh-Hans`
-};
+const SEARCH_SUGGEST_API_ENDPOINT = "/api/suggest";
 const MOBILE_LIQUID_TARGET_SELECTOR = ".search-shell .liquid-lens, #recent-shell .liquid-lens, .dock-shell .liquid-lens, .quick-card .liquid-lens, .hero-tool .liquid-lens";
 const DEFAULT_QUICK_LINKS = [
   { title: "Google", url: "https://www.google.com" },
@@ -401,7 +396,6 @@ let searchSuggestionActiveIndex = -1;
 let searchSuggestionItems = [];
 let searchSuggestionRenderedQuery = "";
 let searchSuggestionAbortController = null;
-const unavailableSearchSuggestionEngines = new Set();
 let mobileLiquidSnapshotUrl = "";
 let mobileLiquidSnapshotWidth = 0;
 let mobileLiquidSnapshotHeight = 0;
@@ -585,6 +579,20 @@ function getSearchEngineLabel(engine = state.engine) {
   return "Google";
 }
 
+function getSearchSuggestionLocale() {
+  const browserLocale = typeof navigator?.language === "string"
+    ? navigator.language.trim()
+    : "";
+  if (browserLocale) {
+    return browserLocale;
+  }
+
+  const documentLocale = typeof document?.documentElement?.lang === "string"
+    ? document.documentElement.lang.trim()
+    : "";
+  return documentLocale || "zh-CN";
+}
+
 function normalizeSearchSuggestionText(value) {
   return typeof value === "string" ? value.trim().replace(/\s+/g, " ") : "";
 }
@@ -625,11 +633,66 @@ function pushSearchSuggestion(items, seen, item) {
     label,
     value,
     url,
+    priority: Number(item.priority) || 0,
     key: createSearchSuggestionKey({ ...item, label, value, url })
   });
 }
 
-function buildSearchSuggestionItems(query, remoteQueries = []) {
+function getSearchSuggestionMatchScore(item, query) {
+  const normalizedQuery = normalizeSearchSuggestionText(query).toLocaleLowerCase();
+  if (!normalizedQuery) {
+    return 0;
+  }
+
+  const normalizedLabel = normalizeSearchSuggestionText(item.label).toLocaleLowerCase();
+  const normalizedValue = normalizeSearchSuggestionText(item.value || item.label).toLocaleLowerCase();
+  const normalizedUrl = normalizeSearchSuggestionText(item.url || "").toLocaleLowerCase();
+  const queryUrl = looksLikeUrl(normalizedQuery) ? normalizeUrl(normalizedQuery).toLocaleLowerCase() : normalizedQuery;
+
+  if (
+    normalizedLabel === normalizedQuery ||
+    normalizedValue === normalizedQuery ||
+    normalizedUrl === queryUrl
+  ) {
+    return 220;
+  }
+
+  if (
+    normalizedLabel.startsWith(normalizedQuery) ||
+    normalizedValue.startsWith(normalizedQuery) ||
+    normalizedUrl.startsWith(queryUrl)
+  ) {
+    return 140;
+  }
+
+  if (
+    normalizedLabel.includes(normalizedQuery) ||
+    normalizedValue.includes(normalizedQuery) ||
+    normalizedUrl.includes(normalizedQuery)
+  ) {
+    return 72;
+  }
+
+  return 0;
+}
+
+function sortSearchSuggestionItems(items, query) {
+  return items
+    .map((item, index) => ({
+      ...item,
+      _index: index,
+      _score: item.priority + getSearchSuggestionMatchScore(item, query) + (item.action === "navigate" ? 6 : 0)
+    }))
+    .sort((left, right) => (
+      right._score - left._score ||
+      left.label.length - right.label.length ||
+      left._index - right._index
+    ))
+    .slice(0, MAX_SEARCH_SUGGESTIONS)
+    .map(({ _index, _score, ...item }) => item);
+}
+
+function buildSearchSuggestionItems(query, remoteSuggestions = []) {
   const normalizedQuery = normalizeSearchSuggestionText(query);
   const engineLabel = getSearchEngineLabel();
   const items = [];
@@ -660,7 +723,8 @@ function buildSearchSuggestionItems(query, remoteQueries = []) {
       action: "search",
       badge: "搜索",
       icon: "S",
-      meta: `在 ${engineLabel} 中搜索`
+      meta: `在 ${engineLabel} 中搜索`,
+      priority: 940
     });
 
     if (looksLikeUrl(normalizedQuery)) {
@@ -675,20 +739,10 @@ function buildSearchSuggestionItems(query, remoteQueries = []) {
         meta: `直接打开 ${getHostLabel(normalizedUrl)}`,
         title: getHostLabel(normalizedUrl),
         recentMeta: "网址直达",
-        recentType: "link"
+        recentType: "link",
+        priority: 1020
       });
     }
-
-    remoteQueries.slice(0, MAX_REMOTE_SEARCH_SUGGESTIONS).forEach((remoteQuery) => {
-      pushSearchSuggestion(items, seen, {
-        label: remoteQuery,
-        value: remoteQuery,
-        action: "search",
-        badge: "联想",
-        icon: "S",
-        meta: `${engineLabel} 联想`
-      });
-    });
   }
 
   matchingRecentSearches.slice(0, MAX_LOCAL_SEARCH_SUGGESTIONS).forEach((entry) => {
@@ -698,7 +752,8 @@ function buildSearchSuggestionItems(query, remoteQueries = []) {
       action: "search",
       badge: "最近",
       icon: "R",
-      meta: formatRecentMeta(entry)
+      meta: formatRecentMeta(entry),
+      priority: 760
     });
   });
 
@@ -713,7 +768,8 @@ function buildSearchSuggestionItems(query, remoteQueries = []) {
       meta: `最近访问 · ${getHostLabel(entry.url)}`,
       title: entry.title,
       recentMeta: entry.meta || getHostLabel(entry.url),
-      recentType: entry.type || "link"
+      recentType: entry.type || "link",
+      priority: 910
     });
   });
 
@@ -728,11 +784,16 @@ function buildSearchSuggestionItems(query, remoteQueries = []) {
       meta: `快捷方式 · ${getHostLabel(entry.url)}`,
       title: entry.title,
       recentMeta: getHostLabel(entry.url),
-      recentType: "link"
+      recentType: "link",
+      priority: 880
     });
   });
 
-  return items.slice(0, MAX_SEARCH_SUGGESTIONS);
+  remoteSuggestions.forEach((item) => {
+    pushSearchSuggestion(items, seen, item);
+  });
+
+  return sortSearchSuggestionItems(items, normalizedQuery);
 }
 
 function setSearchInputExpanded(isExpanded) {
@@ -842,7 +903,7 @@ function buildHighlightedSuggestionLabel(text, query) {
   return fragment;
 }
 
-function updateSearchSuggestionHeader(query, remoteCount = 0) {
+function updateSearchSuggestionHeader(query, remoteStats = {}) {
   if (!searchSuggestTitle || !searchSuggestMeta) {
     return;
   }
@@ -859,8 +920,30 @@ function updateSearchSuggestionHeader(query, remoteCount = 0) {
     return;
   }
 
-  searchSuggestTitle.textContent = remoteCount > 0 ? "搜索联想" : "继续搜索";
-  searchSuggestMeta.textContent = remoteCount > 0
+  const searchCount = Number(remoteStats.searchCount) || 0;
+  const contentCount = Number(remoteStats.contentCount) || 0;
+  const rootCount = Number(remoteStats.rootCount) || 0;
+
+  if (contentCount > 0 && rootCount > 1) {
+    searchSuggestTitle.textContent = "词根 + 联网内容联想";
+    searchSuggestMeta.textContent = `${getSearchEngineLabel()} 联想 + 互联网内容`;
+    return;
+  }
+
+  if (contentCount > 0) {
+    searchSuggestTitle.textContent = "互联网内容联想";
+    searchSuggestMeta.textContent = "搜索联想 + 内容结果";
+    return;
+  }
+
+  if (searchCount > 0 && rootCount > 1) {
+    searchSuggestTitle.textContent = "词根扩展联想";
+    searchSuggestMeta.textContent = `${getSearchEngineLabel()} + 词根展开`;
+    return;
+  }
+
+  searchSuggestTitle.textContent = searchCount > 0 ? "搜索联想" : "继续搜索";
+  searchSuggestMeta.textContent = searchCount > 0
     ? `${getSearchEngineLabel()} + 本地记录`
     : `${getSearchEngineLabel()} · 本地记录`;
 }
@@ -885,7 +968,7 @@ function syncSearchSuggestionActiveState() {
   }
 }
 
-function renderSearchSuggestions(items, { query = "", remoteCount = 0 } = {}) {
+function renderSearchSuggestions(items, { query = "", remoteStats = {} } = {}) {
   if (!canShowSearchSuggestions() || !searchSuggestShell || !searchSuggestList) {
     return;
   }
@@ -909,7 +992,7 @@ function renderSearchSuggestions(items, { query = "", remoteCount = 0 } = {}) {
     return;
   }
 
-  updateSearchSuggestionHeader(query, remoteCount);
+  updateSearchSuggestionHeader(query, remoteStats);
 
   searchSuggestionItems.forEach((item, index) => {
     const button = document.createElement("button");
@@ -1005,36 +1088,22 @@ function executeSearchSuggestion(index = searchSuggestionActiveIndex) {
   submitSearch(item.value);
 }
 
-function parseRemoteSearchSuggestionPayload(payload, engine = state.engine) {
-  if (engine === "duck" && Array.isArray(payload)) {
-    return payload
-      .map((entry) => (typeof entry === "string" ? entry : entry?.phrase))
-      .filter((entry) => typeof entry === "string");
-  }
-
-  if (Array.isArray(payload) && Array.isArray(payload[1])) {
-    return payload[1].filter((entry) => typeof entry === "string");
-  }
-
-  return [];
-}
-
-async function fetchRemoteSearchSuggestionQueries(query, requestId) {
-  const engine = state.engine;
-  const endpointFactory = SEARCH_SUGGESTION_ENDPOINTS[engine];
-  if (!endpointFactory || unavailableSearchSuggestionEngines.has(engine)) {
-    return [];
-  }
-
+async function fetchRemoteSearchSuggestions(query, requestId) {
   const controller = new AbortController();
   searchSuggestionAbortController = controller;
 
   try {
-    const response = await fetch(endpointFactory(query), {
-      signal: controller.signal,
-      mode: "cors",
-      cache: "no-store"
-    });
+    const response = await fetch(
+      `${SEARCH_SUGGEST_API_ENDPOINT}?q=${encodeURIComponent(query)}&engine=${encodeURIComponent(state.engine)}&locale=${encodeURIComponent(getSearchSuggestionLocale())}`,
+      {
+        signal: controller.signal,
+        mode: "cors",
+        cache: "no-store",
+        headers: {
+          accept: "application/json"
+        }
+      }
+    );
 
     if (!response.ok) {
       throw new Error(`Search suggest request failed: ${response.status}`);
@@ -1045,21 +1114,39 @@ async function fetchRemoteSearchSuggestionQueries(query, requestId) {
       return null;
     }
 
-    return parseRemoteSearchSuggestionPayload(payload, engine)
-      .map((entry) => normalizeSearchSuggestionText(entry))
-      .filter(Boolean)
-      .slice(0, MAX_REMOTE_SEARCH_SUGGESTIONS);
+    if (!payload || payload.ok === false) {
+      return {
+        suggestions: [],
+        stats: {
+          searchCount: 0,
+          contentCount: 0,
+          rootCount: 0
+        }
+      };
+    }
+
+    return {
+      suggestions: Array.isArray(payload.suggestions) ? payload.suggestions : [],
+      stats: {
+        searchCount: Number(payload.stats?.searchCount) || 0,
+        contentCount: Number(payload.stats?.contentCount) || 0,
+        rootCount: Number(payload.stats?.rootCount) || 0
+      }
+    };
   } catch (error) {
     if (error?.name === "AbortError") {
       return null;
     }
 
-    if (error instanceof TypeError) {
-      unavailableSearchSuggestionEngines.add(engine);
-    }
-
     console.warn("Search suggestion request failed.", error);
-    return [];
+    return {
+      suggestions: [],
+      stats: {
+        searchCount: 0,
+        contentCount: 0,
+        rootCount: 0
+      }
+    };
   } finally {
     if (searchSuggestionAbortController === controller) {
       searchSuggestionAbortController = null;
@@ -1082,20 +1169,27 @@ function refreshSearchSuggestions({ immediate = false } = {}) {
   const run = async () => {
     searchSuggestionDebounce = 0;
     const localItems = buildSearchSuggestionItems(query);
-    renderSearchSuggestions(localItems, { query, remoteCount: 0 });
-
-    if (!query || looksLikeUrl(query) || unavailableSearchSuggestionEngines.has(state.engine)) {
-      return;
-    }
-
-    const remoteQueries = await fetchRemoteSearchSuggestionQueries(query, requestId);
-    if (!Array.isArray(remoteQueries) || requestId !== searchSuggestionRequestId) {
-      return;
-    }
-
-    renderSearchSuggestions(buildSearchSuggestionItems(query, remoteQueries), {
+    renderSearchSuggestions(localItems, {
       query,
-      remoteCount: remoteQueries.length
+      remoteStats: {
+        searchCount: 0,
+        contentCount: 0,
+        rootCount: 0
+      }
+    });
+
+    if (!query || looksLikeUrl(query)) {
+      return;
+    }
+
+    const remotePayload = await fetchRemoteSearchSuggestions(query, requestId);
+    if (!remotePayload || requestId !== searchSuggestionRequestId) {
+      return;
+    }
+
+    renderSearchSuggestions(buildSearchSuggestionItems(query, remotePayload.suggestions), {
+      query,
+      remoteStats: remotePayload.stats
     });
   };
 
