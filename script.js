@@ -807,6 +807,13 @@ function setSearchInputExpanded(isExpanded) {
   }
 }
 
+function syncSearchSuggestionFocusState() {
+  body.classList.toggle(
+    "search-suggest-focus-visible",
+    isDesktopLayout() && Boolean(searchSuggestShell && !searchSuggestShell.hidden)
+  );
+}
+
 function canShowSearchSuggestions() {
   return Boolean(
     searchStack &&
@@ -857,6 +864,7 @@ function hideSearchSuggestions({ clearItems = true, abortFetch = false } = {}) {
   }
 
   setSearchInputExpanded(false);
+  syncSearchSuggestionFocusState();
 
   if (wasOpen) {
     requestAnimationFrame(refreshLiquidGlassSnapshot);
@@ -1030,6 +1038,7 @@ function renderSearchSuggestions(items, { query = "", remoteStats = {} } = {}) {
 
   searchSuggestShell.hidden = false;
   setSearchInputExpanded(true);
+  syncSearchSuggestionFocusState();
   syncSearchSuggestionActiveState();
   requestAnimationFrame(refreshLiquidGlassSnapshot);
 }
@@ -2630,6 +2639,8 @@ function applyState() {
   } else if (document.activeElement === searchInput) {
     refreshSearchSuggestions({ immediate: true });
   }
+
+  syncSearchSuggestionFocusState();
 }
 
 function getTrueGlassControls() {
