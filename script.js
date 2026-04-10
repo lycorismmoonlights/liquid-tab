@@ -810,7 +810,7 @@ function setSearchInputExpanded(isExpanded) {
 function syncSearchSuggestionFocusState() {
   body.classList.toggle(
     "search-suggest-focus-visible",
-    isDesktopLayout() && Boolean(searchSuggestShell && !searchSuggestShell.hidden)
+    Boolean(searchSuggestShell && !searchSuggestShell.hidden)
   );
 }
 
@@ -819,8 +819,7 @@ function canShowSearchSuggestions() {
     searchStack &&
     searchInput &&
     searchSuggestShell &&
-    searchSuggestList &&
-    isDesktopLayout()
+    searchSuggestList
   );
 }
 
@@ -1377,7 +1376,7 @@ function renderQuickLinks() {
   syncQuickLinkBadge();
   renderQuickLinkManager();
   requestAnimationFrame(refreshLiquidGlassSnapshot);
-  if (document.activeElement === searchInput && isDesktopLayout()) {
+  if (document.activeElement === searchInput) {
     refreshSearchSuggestions({ immediate: true });
   }
 }
@@ -1549,7 +1548,7 @@ function renderRecentEntries() {
   });
 
   requestAnimationFrame(refreshLiquidGlassSnapshot);
-  if (document.activeElement === searchInput && isDesktopLayout()) {
+  if (document.activeElement === searchInput) {
     refreshSearchSuggestions({ immediate: true });
   }
 }
@@ -2634,10 +2633,12 @@ function applyState() {
   syncParallax();
   syncParallaxControls();
 
-  if (!isDesktopLayout()) {
+  if (!canShowSearchSuggestions()) {
     closeSearchSuggestions();
   } else if (document.activeElement === searchInput) {
     refreshSearchSuggestions({ immediate: true });
+  } else if (searchSuggestShell && !searchSuggestShell.hidden) {
+    closeSearchSuggestions();
   }
 
   syncSearchSuggestionFocusState();
